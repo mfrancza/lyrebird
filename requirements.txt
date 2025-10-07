@@ -1,0 +1,9 @@
+# PyTorch and related dependencies
+torch>=2.0.0
+torchvision>=0.15.0
+torchaudio>=2.0.0
+
+# Jupyter notebook
+jupyter>=1.0.0
+notebook>=7.0.0
+ipykernel>=6.25.0
