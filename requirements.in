@@ -1,0 +1,7 @@
+# Core ML dependencies
+torch>=2.8.0
+torchaudio>=2.8.0
+
+# Audio backend
+soundfile>=0.13.0
+

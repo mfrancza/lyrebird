@@ -1,0 +1,10 @@
+# Include all production dependencies
+-r requirements.txt
+
+# Development and testing
+# (These are already in requirements.txt but listed here for clarity)
+# pytest>=8.0.0
+# jupyter>=1.0.0
+# jupyterlab>=4.0.0
+# ipywidgets>=8.0.0
+

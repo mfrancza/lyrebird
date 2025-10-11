@@ -24,10 +24,25 @@ venv\Scripts\activate
 
 ### Install Dependencies
 
-Install PyTorch and Jupyter:
-
+For production use (core dependencies only):
 ```bash
 pip install -r requirements.txt
+```
+
+For development (includes testing and notebooks):
+```bash
+pip install -r requirements-dev.txt
+```
+
+**Requirements Files:**
+- `requirements.in` - Minimal direct dependencies (edit this to add/update packages)
+- `requirements.txt` - Fully frozen with exact versions (generated from requirements.in)
+- `requirements-dev.txt` - Development dependencies (testing, notebooks, etc.)
+
+**To update dependencies:**
+```bash
+pip install pip-tools
+pip-compile requirements.in
 ```
 
 ## Usage
