@@ -1,0 +1,10 @@
+# Kernel parameters for low-latency audio
+# Append these to your existing /boot/cmdline.txt (all on ONE line)
+#
+# isolcpus=2,3      - Reserve CPU cores 2 and 3 for audio processing
+# nohz_full=2,3     - Disable timer ticks on isolated cores
+# rcu_nocbs=2,3     - Offload RCU callbacks from isolated cores
+# threadirqs        - Force threaded IRQ handlers
+#
+# Example full cmdline.txt:
+# console=serial0,115200 console=tty1 root=PARTUUID=xxx rootfstype=ext4 fsck.repair=yes rootwait isolcpus=2,3 nohz_full=2,3 rcu_nocbs=2,3 threadirqs

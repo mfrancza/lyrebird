@@ -1,0 +1,14 @@
+# Pre-trained model storage
+# Place trained .pth and .onnx models here
+
+# Recommended directory structure:
+# models/
+# ├── tiny/
+# │   ├── model.pth
+# │   └── model.onnx
+# ├── small/
+# │   ├── model.pth
+# │   └── model.onnx
+# └── medium/
+#     ├── model.pth
+#     └── model.onnx

@@ -1,0 +1,43 @@
+[Unit]
+Description=Lyrebird Neural Audio Effects Processor
+After=sound.target
+Wants=sound.target
+
+[Service]
+Type=simple
+User=pi
+Group=audio
+
+# Working directory
+WorkingDirectory=/home/pi/lyrebird
+
+# Main process
+ExecStart=/home/pi/lyrebird/venv/bin/python pi/realtime_processor.py \
+    --model models/small/model.pth \
+    --buffer-length 128 \
+    --hidden-size 64 \
+    --num-layers 1 \
+    --sample-rate 44100 \
+    --block-size 128 \
+    --channels 1
+
+# Restart on failure
+Restart=on-failure
+RestartSec=5
+
+# Real-time priority settings
+Nice=-10
+CPUSchedulingPolicy=fifo
+CPUSchedulingPriority=80
+
+# Pin to isolated CPUs (if using isolcpus)
+CPUAffinity=2 3
+
+# Limit memory usage
+MemoryMax=512M
+
+# Environment
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
