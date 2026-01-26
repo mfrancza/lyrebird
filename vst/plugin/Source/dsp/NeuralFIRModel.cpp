@@ -9,7 +9,6 @@ namespace lyrebird {
 
 NeuralFIRModel::NeuralFIRModel() {
     ringBuffer_.prepare(ModelConfig::BUFFER_LENGTH);
-    inferenceBuffer_.fill(0.0f);
 }
 
 NeuralFIRModel::~NeuralFIRModel() = default;
@@ -176,11 +175,8 @@ float NeuralFIRModel::processSample(float input) {
         return input;
     }
 
-    // Copy ring buffer to inference buffer (chronological order)
-    ringBuffer_.copyTo(inferenceBuffer_.data());
-
-    // Run inference
-    float modelOutput = model_.forward(inferenceBuffer_.data());
+    // Run inference directly on ring buffer data (zero-copy)
+    float modelOutput = model_.forward(ringBuffer_.data());
 
     // Crossfade from passthrough to model output during transition period
     int samplesAfterBufferFill = sampleCount_ - ModelConfig::BUFFER_LENGTH;
@@ -204,19 +200,20 @@ void NeuralFIRModel::warmup(int iterations) {
         return;
     }
 
-    // Fill inference buffer with realistic audio-like values
+    // Fill ring buffer with realistic audio-like values
     for (int i = 0; i < ModelConfig::INPUT_SIZE; ++i) {
-        inferenceBuffer_[i] = 0.1f * std::sin(static_cast<float>(i) * 0.1f);
+        ringBuffer_.push(0.1f * std::sin(static_cast<float>(i) * 0.1f));
     }
 
     // Run dummy inferences to warm CPU caches
     volatile float dummy = 0.0f;  // volatile prevents optimization
     for (int i = 0; i < iterations; ++i) {
-        dummy = model_.forward(inferenceBuffer_.data());
+        dummy = model_.forward(ringBuffer_.data());
     }
 
-    // Reset model state after warmup
+    // Reset state after warmup
     model_.reset();
+    ringBuffer_.reset();
 }
 
 } // namespace lyrebird

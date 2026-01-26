@@ -138,8 +138,7 @@ private:
     >;
 
     ModelType model_;
-    RingBuffer<float> ringBuffer_;
-    std::array<float, ModelConfig::INPUT_SIZE> inferenceBuffer_;
+    ZeroCopyRingBuffer<float> ringBuffer_;
 
     bool modelLoaded_ = false;
     int sampleCount_ = 0;  // Track samples for initial buffer fill
