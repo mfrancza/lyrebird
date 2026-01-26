@@ -1,0 +1,152 @@
+name: Build VST Plugin
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'vst/**'
+      - '.github/workflows/build-vst.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'vst/**'
+      - '.github/workflows/build-vst.yml'
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup MSVC
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Configure CMake
+        working-directory: vst
+        run: cmake -B build -G "Visual Studio 17 2022" -A x64
+
+      - name: Build
+        working-directory: vst
+        run: cmake --build build --config Release
+
+      - name: Upload VST3 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LyrebirdVST-Windows-VST3
+          path: vst/build/plugin/LyrebirdVST_artefacts/Release/VST3/
+          if-no-files-found: error
+
+      - name: Upload Standalone artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LyrebirdVST-Windows-Standalone
+          path: vst/build/plugin/LyrebirdVST_artefacts/Release/Standalone/
+          if-no-files-found: warn
+
+  build-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libasound2-dev \
+            libjack-jackd2-dev \
+            ladspa-sdk \
+            libcurl4-openssl-dev \
+            libfreetype6-dev \
+            libx11-dev \
+            libxcomposite-dev \
+            libxcursor-dev \
+            libxext-dev \
+            libxinerama-dev \
+            libxrandr-dev \
+            libxrender-dev \
+            libwebkit2gtk-4.0-dev \
+            libglu1-mesa-dev \
+            mesa-common-dev
+
+      - name: Configure CMake
+        working-directory: vst
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        working-directory: vst
+        run: cmake --build build --config Release -j$(nproc)
+
+      - name: Upload VST3 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LyrebirdVST-Linux-VST3
+          path: vst/build/plugin/LyrebirdVST_artefacts/VST3/
+          if-no-files-found: error
+
+      - name: Upload Standalone artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LyrebirdVST-Linux-Standalone
+          path: vst/build/plugin/LyrebirdVST_artefacts/Standalone/
+          if-no-files-found: warn
+
+  test-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libasound2-dev \
+            libjack-jackd2-dev \
+            ladspa-sdk \
+            libcurl4-openssl-dev \
+            libfreetype6-dev \
+            libx11-dev \
+            libxcomposite-dev \
+            libxcursor-dev \
+            libxext-dev \
+            libxinerama-dev \
+            libxrandr-dev \
+            libxrender-dev \
+            libwebkit2gtk-4.0-dev \
+            libglu1-mesa-dev \
+            mesa-common-dev
+
+      - name: Install Python for test model generation
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Generate test model
+        working-directory: vst/test
+        run: |
+          pip install numpy
+          python generate_test_model.py
+
+      - name: Configure CMake with tests
+        working-directory: vst
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON
+
+      - name: Build
+        working-directory: vst
+        run: cmake --build build --config Release -j$(nproc)
+
+      - name: Run tests
+        working-directory: vst/build
+        run: ctest --output-on-failure -E rtneural_test_functional

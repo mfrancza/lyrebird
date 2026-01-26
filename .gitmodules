@@ -1,0 +1,6 @@
+[submodule "vst/modules/JUCE"]
+	path = vst/modules/JUCE
+	url = https://github.com/juce-framework/JUCE
+[submodule "vst/modules/RTNeural"]
+	path = vst/modules/RTNeural
+	url = https://github.com/jatinchowdhury18/RTNeural

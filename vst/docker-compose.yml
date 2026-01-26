@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  builder:
+    build: .
+    image: lyrebird-vst-builder
+    volumes:
+      - ..:/workspace
+    working_dir: /workspace/vst
+
+  # Build the plugin
+  build:
+    build: .
+    image: lyrebird-vst-builder
+    volumes:
+      - ..:/workspace
+    working_dir: /workspace/vst
+    command: >
+      bash -c "
+        git submodule update --init --recursive &&
+        cmake -B build -DCMAKE_BUILD_TYPE=Release &&
+        cmake --build build --config Release -j$$(nproc)
+      "
+
+  # Build and run tests
+  test:
+    build: .
+    image: lyrebird-vst-builder
+    volumes:
+      - ..:/workspace
+    working_dir: /workspace/vst
+    command: >
+      bash -c "
+        git submodule update --init --recursive &&
+        cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON &&
+        cmake --build build --config Release -j$$(nproc) &&
+        cd build && ctest --output-on-failure
+      "
+
+  # Interactive shell for development
+  shell:
+    build: .
+    image: lyrebird-vst-builder
+    volumes:
+      - ..:/workspace
+    working_dir: /workspace/vst
+    stdin_open: true
+    tty: true
+    command: bash
