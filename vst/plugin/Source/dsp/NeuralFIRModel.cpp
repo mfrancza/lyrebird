@@ -3,6 +3,7 @@
 #include <fstream>
 #include <iostream>
 #include <vector>
+#include <cmath>
 
 namespace lyrebird {
 
@@ -196,6 +197,26 @@ void NeuralFIRModel::reset() {
     ringBuffer_.reset();
     model_.reset();
     sampleCount_ = 0;
+}
+
+void NeuralFIRModel::warmup(int iterations) {
+    if (!modelLoaded_) {
+        return;
+    }
+
+    // Fill inference buffer with realistic audio-like values
+    for (int i = 0; i < ModelConfig::INPUT_SIZE; ++i) {
+        inferenceBuffer_[i] = 0.1f * std::sin(static_cast<float>(i) * 0.1f);
+    }
+
+    // Run dummy inferences to warm CPU caches
+    volatile float dummy = 0.0f;  // volatile prevents optimization
+    for (int i = 0; i < iterations; ++i) {
+        dummy = model_.forward(inferenceBuffer_.data());
+    }
+
+    // Reset model state after warmup
+    model_.reset();
 }
 
 } // namespace lyrebird

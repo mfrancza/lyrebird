@@ -72,6 +72,15 @@ public:
     void reset();
 
     /**
+     * Warm up the model by running dummy inferences.
+     * Call this in prepareToPlay() to avoid choppy audio at startup.
+     * This pre-populates CPU caches for smoother real-time performance.
+     *
+     * @param iterations Number of dummy inferences to run (default: 100)
+     */
+    void warmup(int iterations = 100);
+
+    /**
      * Get the latency in samples.
      * This is the buffer length - the number of samples delay introduced.
      *

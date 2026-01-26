@@ -42,6 +42,10 @@ void LyrebirdAudioProcessor::prepareToPlay(double sampleRate, int /*samplesPerBl
     if (neuralModel_) neuralModel_->reset();
     if (neuralModelRight_) neuralModelRight_->reset();
 
+    // Warm up models to pre-populate CPU caches and avoid choppy audio at startup
+    if (neuralModel_) neuralModel_->warmup(100);
+    if (neuralModelRight_) neuralModelRight_->warmup(100);
+
     // Report latency to DAW for automatic compensation
     setLatencySamples(neuralModel_ ? neuralModel_->getLatencySamples() : 0);
 }
