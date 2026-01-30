@@ -98,14 +98,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: LyrebirdVST-Linux-VST3
-          path: vst/build/plugin/LyrebirdVST_artefacts/VST3/
+          path: vst/build/plugin/LyrebirdVST_artefacts/Release/VST3/
           if-no-files-found: error
 
       - name: Upload Standalone artifact
         uses: actions/upload-artifact@v4
         with:
           name: LyrebirdVST-Linux-Standalone
-          path: vst/build/plugin/LyrebirdVST_artefacts/Standalone/
+          path: vst/build/plugin/LyrebirdVST_artefacts/Release/Standalone/
           if-no-files-found: warn
 
   test-linux:
