@@ -28,7 +28,7 @@ jobs:
 
       - name: Configure CMake
         working-directory: vst
-        run: cmake -B build -G "Visual Studio 17 2022" -A x64
+        run: cmake -B build -G "Visual Studio 17 2022" -A x64 -DJUCE_COPY_PLUGIN_AFTER_BUILD=OFF
 
       - name: Build
         working-directory: vst
@@ -48,8 +48,17 @@ jobs:
           path: vst/build/plugin/LyrebirdVST_artefacts/Release/Standalone/
           if-no-files-found: warn
 
+      - name: Upload sample models
+        uses: actions/upload-artifact@v4
+        with:
+          name: Sample-Models
+          path: |
+            big_muff_rtneural.json
+            distortion_rtneural.json
+          if-no-files-found: warn
+
   build-linux:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04  # Use 22.04 for libwebkit2gtk-4.0-dev compatibility
 
     steps:
       - name: Checkout repository
@@ -79,7 +88,7 @@ jobs:
 
       - name: Configure CMake
         working-directory: vst
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DJUCE_COPY_PLUGIN_AFTER_BUILD=OFF
 
       - name: Build
         working-directory: vst
@@ -100,7 +109,7 @@ jobs:
           if-no-files-found: warn
 
   test-linux:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04  # Use 22.04 for libwebkit2gtk-4.0-dev compatibility
 
     steps:
       - name: Checkout repository
@@ -141,7 +150,7 @@ jobs:
 
       - name: Configure CMake with tests
         working-directory: vst
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON -DJUCE_COPY_PLUGIN_AFTER_BUILD=OFF
 
       - name: Build
         working-directory: vst
