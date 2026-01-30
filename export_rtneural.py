@@ -28,14 +28,14 @@ def export_to_rtneural(model_path: str, output_path: str) -> dict:
         The exported model dictionary
     """
     # Load the checkpoint
-    checkpoint = torch.load(model_path, map_location='cpu', weights_only=False)
+    checkpoint = torch.load(model_path, map_location="cpu", weights_only=False)
 
     # Extract configuration
-    buffer_length = checkpoint['buffer_length']
-    input_size = checkpoint['input_size']
-    hidden_size = checkpoint['hidden_size']
-    num_layers = checkpoint['num_layers']
-    output_size = checkpoint['output_size']
+    buffer_length = checkpoint["buffer_length"]
+    input_size = checkpoint["input_size"]
+    hidden_size = checkpoint["hidden_size"]
+    num_layers = checkpoint["num_layers"]
+    output_size = checkpoint["output_size"]
 
     print(f"Model configuration:")
     print(f"  buffer_length: {buffer_length}")
@@ -45,16 +45,16 @@ def export_to_rtneural(model_path: str, output_path: str) -> dict:
     print(f"  output_size: {output_size}")
 
     # Get the state dict
-    state_dict = checkpoint['model_state_dict']
+    state_dict = checkpoint["model_state_dict"]
 
     # Build the RTNeural JSON structure
     rtneural_model = {
         "config": {
             "buffer_length": buffer_length,
             "hidden_size": hidden_size,
-            "num_layers": num_layers
+            "num_layers": num_layers,
         },
-        "layers": []
+        "layers": [],
     }
 
     # The PyTorch model has layers indexed as:
@@ -76,36 +76,37 @@ def export_to_rtneural(model_path: str, output_path: str) -> dict:
     # Actually, let's just enumerate the state dict keys to find the linear layers
     linear_layers = []
     for key in state_dict.keys():
-        if 'weight' in key:
-            layer_num = key.split('.')[1]  # e.g., "network.1.weight" -> "1"
+        if "weight" in key:
+            layer_num = key.split(".")[1]  # e.g., "network.1.weight" -> "1"
             linear_layers.append(int(layer_num))
 
     linear_layers = sorted(set(linear_layers))
     print(f"\nFound {len(linear_layers)} linear layers at indices: {linear_layers}")
 
     for i, layer_idx in enumerate(linear_layers):
-        weight_key = f'network.{layer_idx}.weight'
-        bias_key = f'network.{layer_idx}.bias'
+        weight_key = f"network.{layer_idx}.weight"
+        bias_key = f"network.{layer_idx}.bias"
 
         weights = state_dict[weight_key].numpy()
         bias = state_dict[bias_key].numpy()
 
-        print(f"  Layer {i}: {weight_key} shape={weights.shape}, bias shape={bias.shape}")
+        print(
+            f"  Layer {i}: {weight_key} shape={weights.shape}, bias shape={bias.shape}"
+        )
 
         # RTNeural expects weights as [out_features][in_features]
         # PyTorch Linear stores weights as [out_features, in_features]
         # So the shape is already correct
 
-        rtneural_model["layers"].append({
-            "weights": weights.tolist(),
-            "bias": bias.tolist()
-        })
+        rtneural_model["layers"].append(
+            {"weights": weights.tolist(), "bias": bias.tolist()}
+        )
 
     # Save to JSON
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    with open(output_path, 'w') as f:
+    with open(output_path, "w") as f:
         json.dump(rtneural_model, f)
 
     # Print file size
@@ -118,10 +119,10 @@ def export_to_rtneural(model_path: str, output_path: str) -> dict:
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Export Lyrebird models to RTNeural JSON format'
+        description="Export Lyrebird models to RTNeural JSON format"
     )
-    parser.add_argument('model_path', help='Path to the .pth model file')
-    parser.add_argument('output_path', help='Path to save the RTNeural JSON file')
+    parser.add_argument("model_path", help="Path to the .pth model file")
+    parser.add_argument("output_path", help="Path to save the RTNeural JSON file")
 
     args = parser.parse_args()
 
@@ -129,5 +130,5 @@ def main():
     print("\nDone! You can now load this model in the Lyrebird VST plugin.")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
