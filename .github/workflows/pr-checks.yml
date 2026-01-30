@@ -51,8 +51,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install black ruff pytest
           pip install -r requirements.txt
+          pip install black ruff pytest torchcodec
 
       - name: Check formatting (black)
         run: black --check lyrebird.py test_lyrebird.py export_rtneural.py
