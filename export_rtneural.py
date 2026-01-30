@@ -37,7 +37,7 @@ def export_to_rtneural(model_path: str, output_path: str) -> dict:
     num_layers = checkpoint["num_layers"]
     output_size = checkpoint["output_size"]
 
-    print(f"Model configuration:")
+    print("Model configuration:")
     print(f"  buffer_length: {buffer_length}")
     print(f"  input_size: {input_size}")
     print(f"  hidden_size: {hidden_size}")

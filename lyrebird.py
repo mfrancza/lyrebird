@@ -231,7 +231,6 @@ def evaluate(dataloader, model, loss_fn, device):
         loss_fn: Loss function to use
         device: Device to run evaluation on (cpu or cuda)
     """
-    size = len(dataloader.dataset)
     num_batches = len(dataloader)
     model.eval()
     test_loss = 0
