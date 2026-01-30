@@ -69,22 +69,29 @@ if not errorlevel 1 (
 )
 
 REM Build using Ninja if available, otherwise auto-detect VS
+REM Disable JUCE's auto-install to avoid permission errors
 where ninja >nul 2>&1
 if not errorlevel 1 (
     echo Using Ninja generator...
-    cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+    cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DJUCE_COPY_PLUGIN_AFTER_BUILD=OFF
     cmake --build build
 ) else (
     echo Using Visual Studio generator...
-    cmake -B build -A x64
+    cmake -B build -A x64 -DJUCE_COPY_PLUGIN_AFTER_BUILD=OFF
     cmake --build build --config Release
 )
 
-if errorlevel 1 (
+REM Check if VST3 was built (ignore JUCE's copy errors)
+set VST3_CHECK=build\plugin\LyrebirdVST_artefacts\Release\VST3\Lyrebird.vst3
+if not exist "%VST3_CHECK%" (
+    set VST3_CHECK=build\plugin\LyrebirdVST_artefacts\VST3\Lyrebird.vst3
+)
+if not exist "%VST3_CHECK%" (
     echo.
-    echo ERROR: Build failed!
+    echo ERROR: Build failed - VST3 not found!
     exit /b 1
 )
+echo VST3 built successfully.
 
 REM ===== INSTALL =====
 :install
