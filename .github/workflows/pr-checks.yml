@@ -28,8 +28,11 @@ jobs:
               - 'requirements*.txt'
               - 'requirements*.in'
               - 'export_rtneural.py'
+              - '.github/workflows/pr-checks.yml'
             vst:
               - 'vst/**'
+              - '.github/workflows/pr-checks.yml'
+            # Pi runner (planned - directory does not exist yet)
             pi:
               - 'pi/**'
 
@@ -113,7 +116,7 @@ jobs:
         working-directory: vst/build
         run: ctest --output-on-failure -E rtneural_test_functional
 
-  # Pi runner checks
+  # Pi runner checks (planned - directory does not exist yet)
   pi-checks:
     needs: changes
     if: needs.changes.outputs.pi == 'true'
@@ -135,8 +138,9 @@ jobs:
       - name: Check formatting (black)
         working-directory: pi
         run: |
-          if ls *.py 1> /dev/null 2>&1; then
-            black --check *.py
+          files=$(find . -name "*.py" -type f)
+          if [ -n "$files" ]; then
+            echo "$files" | xargs black --check
           else
             echo "No Python files to check"
           fi
@@ -144,8 +148,9 @@ jobs:
       - name: Lint (ruff)
         working-directory: pi
         run: |
-          if ls *.py 1> /dev/null 2>&1; then
-            ruff check *.py
+          files=$(find . -name "*.py" -type f)
+          if [ -n "$files" ]; then
+            echo "$files" | xargs ruff check
           else
             echo "No Python files to lint"
           fi

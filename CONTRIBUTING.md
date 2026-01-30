@@ -34,7 +34,7 @@ All PRs must pass automated checks before merging:
 
 - **Python library**: Formatting (black), linting (ruff), unit tests (pytest)
 - **VST plugin**: Build verification, unit tests (Catch2)
-- **Pi runner**: Formatting, linting, unit tests
+- **Pi runner** *(planned)*: Formatting, linting, unit tests
 
 ### Code Style
 
@@ -58,10 +58,10 @@ source venv/bin/activate
 pytest test_lyrebird.py -v
 
 # Format code
-black lyrebird.py test_lyrebird.py
+black lyrebird.py test_lyrebird.py export_rtneural.py
 
 # Lint code
-ruff check lyrebird.py
+ruff check lyrebird.py test_lyrebird.py export_rtneural.py
 ```
 
 #### VST Plugin
@@ -75,7 +75,7 @@ cd vst
 .\build-windows.bat native
 ```
 
-#### Pi Runner
+#### Pi Runner *(planned)*
 ```bash
 cd pi
 pytest tests/ -v
