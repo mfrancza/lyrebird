@@ -1,0 +1,172 @@
+name: PR Checks
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  # Determine which components changed
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      python: ${{ steps.filter.outputs.python }}
+      vst: ${{ steps.filter.outputs.vst }}
+      pi: ${{ steps.filter.outputs.pi }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            python:
+              - 'lyrebird.py'
+              - 'test_lyrebird.py'
+              - 'requirements*.txt'
+              - 'requirements*.in'
+              - 'export_rtneural.py'
+              - '.github/workflows/pr-checks.yml'
+            vst:
+              - 'vst/**'
+              - '.github/workflows/pr-checks.yml'
+            # Pi runner (planned - directory does not exist yet)
+            pi:
+              - 'pi/**'
+
+  # Python library checks
+  python-checks:
+    needs: changes
+    if: needs.changes.outputs.python == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install FFmpeg libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg libavutil-dev libavcodec-dev libavformat-dev libswresample-dev
+          # Verify FFmpeg version
+          ffmpeg -version | head -1
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install black ruff pytest
+
+      - name: Check formatting (black)
+        run: black --check lyrebird.py test_lyrebird.py export_rtneural.py
+
+      - name: Lint (ruff)
+        run: ruff check lyrebird.py test_lyrebird.py export_rtneural.py
+
+      - name: Run tests (pytest)
+        run: pytest test_lyrebird.py -v
+
+  # VST plugin checks
+  vst-checks:
+    needs: changes
+    if: needs.changes.outputs.vst == 'true'
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libasound2-dev \
+            libjack-jackd2-dev \
+            ladspa-sdk \
+            libcurl4-openssl-dev \
+            libfreetype6-dev \
+            libx11-dev \
+            libxcomposite-dev \
+            libxcursor-dev \
+            libxext-dev \
+            libxinerama-dev \
+            libxrandr-dev \
+            libxrender-dev \
+            libwebkit2gtk-4.0-dev \
+            libglu1-mesa-dev \
+            mesa-common-dev
+
+      - name: Install Python for test model generation
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Generate test model
+        working-directory: vst/test
+        run: |
+          pip install numpy
+          python generate_test_model.py
+
+      - name: Configure CMake with tests
+        working-directory: vst
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON -DJUCE_COPY_PLUGIN_AFTER_BUILD=OFF
+
+      - name: Build
+        working-directory: vst
+        run: cmake --build build --config Release -j$(nproc)
+
+      - name: Run tests
+        working-directory: vst/build
+        run: ctest --output-on-failure -E rtneural_test_functional
+
+  # Pi runner checks (planned - directory does not exist yet)
+  pi-checks:
+    needs: changes
+    if: needs.changes.outputs.pi == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        working-directory: pi
+        run: |
+          pip install black ruff pytest
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Check formatting (black)
+        working-directory: pi
+        run: |
+          files=$(find . -name "*.py" -type f)
+          if [ -n "$files" ]; then
+            echo "$files" | xargs black --check
+          else
+            echo "No Python files to check"
+          fi
+
+      - name: Lint (ruff)
+        working-directory: pi
+        run: |
+          files=$(find . -name "*.py" -type f)
+          if [ -n "$files" ]; then
+            echo "$files" | xargs ruff check
+          else
+            echo "No Python files to lint"
+          fi
+
+      - name: Run tests (pytest)
+        working-directory: pi
+        run: |
+          if [ -d tests ]; then
+            pytest tests/ -v
+          else
+            echo "No tests directory found"
+          fi

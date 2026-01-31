@@ -66,3 +66,31 @@ Constructor parameters:
 - `fir_demo.ipynb`: Main training demonstration with piano distortion
 - `big_muff_demo.ipynb`: Real guitar effect (Big Muff pedal) cloning
 - `hyperparameter_exploration.ipynb`: Parameter tuning experiments
+
+## Development Workflow
+
+**IMPORTANT:** Follow this workflow for all code changes:
+
+1. **Create a feature branch** before making changes:
+   ```bash
+   git checkout main && git pull
+   git checkout -b feature/your-feature-name  # or fix/bug-description
+   ```
+
+2. **Make changes and commit** with clear messages
+
+3. **Create a Pull Request** when done:
+   ```bash
+   git push -u origin <branch-name>
+   gh pr create --title "Your PR title" --body "Description"
+   ```
+
+4. **Add reviewers:** `mfrancza` and `copilot`
+
+See `CONTRIBUTING.md` for full details on PR requirements, code style, and testing.
+
+## Project Components
+
+- **Python library** (`lyrebird.py`): Training framework
+- **VST plugin** (`vst/`): Real-time audio plugin using RTNeural
+- **Pi runner** (`pi/`): Raspberry Pi deployment
