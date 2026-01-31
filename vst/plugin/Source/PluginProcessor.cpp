@@ -5,14 +5,21 @@ LyrebirdAudioProcessor::LyrebirdAudioProcessor()
     : AudioProcessor(BusesProperties()
                          .withInput("Input", juce::AudioChannelSet::stereo(), true)
                          .withOutput("Output", juce::AudioChannelSet::stereo(), true)),
-      neuralModel_(std::make_unique<lyrebird::NeuralFIRModel>()),
-      neuralModelRight_(std::make_unique<lyrebird::NeuralFIRModel>()) {
+      currentModelSize_(lyrebird::ModelSize::Large),
+      neuralModel_(lyrebird::ModelFactory::create(lyrebird::ModelSize::Large)),
+      neuralModelRight_(lyrebird::ModelFactory::create(lyrebird::ModelSize::Large)) {
     // Create parameters
     addParameter(dryWetParam = new juce::AudioParameterFloat(
         "dryWet", "Dry/Wet", 0.0f, 1.0f, 1.0f));
 
     addParameter(bypassParam = new juce::AudioParameterBool(
         "bypass", "Bypass", false));
+
+    // Model size parameter (Small=0, Medium=1, Large=2)
+    addParameter(modelSizeParam = new juce::AudioParameterChoice(
+        "modelSize", "Model Size",
+        juce::StringArray{"Small", "Medium", "Large"},
+        2));  // Default to Large
 }
 
 LyrebirdAudioProcessor::~LyrebirdAudioProcessor() = default;
@@ -136,9 +143,9 @@ void LyrebirdAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
 bool LyrebirdAudioProcessor::loadModel(const juce::File& modelFile) {
     std::string path = modelFile.getFullPathName().toStdString();
 
-    // Create new staging models
-    auto newModel = std::make_unique<lyrebird::NeuralFIRModel>();
-    auto newModelRight = std::make_unique<lyrebird::NeuralFIRModel>();
+    // Create new staging models with current size
+    auto newModel = lyrebird::ModelFactory::create(currentModelSize_);
+    auto newModelRight = lyrebird::ModelFactory::create(currentModelSize_);
 
     // Load into staging models (UI thread)
     bool success = newModel->loadModel(path);
@@ -181,6 +188,57 @@ juce::String LyrebirdAudioProcessor::getLastModelError() const {
     return lastModelError_;
 }
 
+void LyrebirdAudioProcessor::setModelSize(lyrebird::ModelSize size) {
+    if (size == currentModelSize_) {
+        return;
+    }
+
+    // Create new models with the specified size
+    auto newModel = lyrebird::ModelFactory::create(size);
+    auto newModelRight = lyrebird::ModelFactory::create(size);
+
+    // If we have a loaded model path, try to reload with new size
+    // Note: The loaded model may not match the new size - that's expected
+    // User will need to load a compatible model
+
+    // Store in staging for thread-safe swap
+    stagingModel_ = std::move(newModel);
+    stagingModelRight_ = std::move(newModelRight);
+
+    currentModelSize_ = size;
+
+    // Update the parameter if it doesn't match
+    int paramIndex = static_cast<int>(size);
+    if (modelSizeParam->getIndex() != paramIndex) {
+        *modelSizeParam = paramIndex;
+    }
+
+    // Signal audio thread to perform swap
+    modelSwapPending_.store(true, std::memory_order_release);
+
+    // Clear loaded model path since we're switching sizes
+    loadedModelPath_.clear();
+
+    // Clear any previous error
+    {
+        const juce::ScopedLock sl(errorLock_);
+        lastModelError_.clear();
+        lastErrorPending_.store(false, std::memory_order_release);
+    }
+}
+
+int LyrebirdAudioProcessor::getModelBufferLength() const {
+    return lyrebird::getBufferLengthForSize(currentModelSize_);
+}
+
+int LyrebirdAudioProcessor::getModelHiddenSize() const {
+    return lyrebird::getHiddenSizeForSize(currentModelSize_);
+}
+
+int LyrebirdAudioProcessor::getModelNumLayers() const {
+    return lyrebird::getNumLayersForSize(currentModelSize_);
+}
+
 bool LyrebirdAudioProcessor::hasEditor() const {
     return true;
 }
@@ -196,6 +254,7 @@ void LyrebirdAudioProcessor::getStateInformation(juce::MemoryBlock& destData) {
     stream.writeFloat(*dryWetParam);
     stream.writeBool(*bypassParam);
     stream.writeString(loadedModelPath_);
+    stream.writeInt(static_cast<int>(currentModelSize_));
 }
 
 void LyrebirdAudioProcessor::setStateInformation(const void* data, int sizeInBytes) {
@@ -208,13 +267,25 @@ void LyrebirdAudioProcessor::setStateInformation(const void* data, int sizeInByt
     if (stream.getNumBytesRemaining() > 0) {
         *bypassParam = stream.readBool();
     }
+
+    juce::String modelPath;
     if (stream.getNumBytesRemaining() > 0) {
-        juce::String modelPath = stream.readString();
-        if (modelPath.isNotEmpty()) {
-            juce::File modelFile(modelPath);
-            if (modelFile.existsAsFile()) {
-                loadModel(modelFile);
-            }
+        modelPath = stream.readString();
+    }
+
+    // Restore model size (defaults to Large for backwards compatibility)
+    if (stream.getNumBytesRemaining() >= sizeof(int)) {
+        int sizeInt = stream.readInt();
+        if (sizeInt >= 0 && sizeInt <= 2) {
+            setModelSize(static_cast<lyrebird::ModelSize>(sizeInt));
+        }
+    }
+
+    // Load model after setting size
+    if (modelPath.isNotEmpty()) {
+        juce::File modelFile(modelPath);
+        if (modelFile.existsAsFile()) {
+            loadModel(modelFile);
         }
     }
 }

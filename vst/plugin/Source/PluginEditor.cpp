@@ -36,9 +36,24 @@ LyrebirdAudioProcessorEditor::LyrebirdAudioProcessorEditor(LyrebirdAudioProcesso
     modelInfoLabel.setJustificationType(juce::Justification::centred);
     modelInfoLabel.setFont(juce::Font(12.0f));
     addAndMakeVisible(modelInfoLabel);
+
+    // Model Size ComboBox
+    modelSizeCombo.addItem("Small (Pi)", 1);
+    modelSizeCombo.addItem("Medium", 2);
+    modelSizeCombo.addItem("Large", 3);
+    modelSizeCombo.setSelectedId(static_cast<int>(audioProcessor.getModelSize()) + 1,
+                                  juce::dontSendNotification);
+    modelSizeCombo.addListener(this);
+    addAndMakeVisible(modelSizeCombo);
+
+    // Model Size Label
+    modelSizeLabel.setText("Model Size", juce::dontSendNotification);
+    modelSizeLabel.setJustificationType(juce::Justification::centred);
+    addAndMakeVisible(modelSizeLabel);
+
     updateModelInfo();
 
-    setSize(300, 350);
+    setSize(300, 400);
 }
 
 LyrebirdAudioProcessorEditor::~LyrebirdAudioProcessorEditor() = default;
@@ -65,10 +80,16 @@ void LyrebirdAudioProcessorEditor::resized() {
 
     area.removeFromTop(10);
 
+    // Model size selector
+    modelSizeLabel.setBounds(area.removeFromTop(20));
+    modelSizeCombo.setBounds(area.removeFromTop(25).reduced(40, 0));
+
+    area.removeFromTop(10);
+
     // Load button
     loadModelButton.setBounds(area.removeFromTop(30).reduced(40, 0));
 
-    area.removeFromTop(20);
+    area.removeFromTop(15);
 
     // Dry/Wet knob
     auto knobArea = area.removeFromTop(120);
@@ -77,7 +98,7 @@ void LyrebirdAudioProcessorEditor::resized() {
     // Dry/Wet label
     dryWetLabel.setBounds(area.removeFromTop(20));
 
-    area.removeFromTop(20);
+    area.removeFromTop(15);
 
     // Bypass button at bottom
     bypassButton.setBounds(area.removeFromTop(30).reduced(80, 0));
@@ -103,9 +124,9 @@ void LyrebirdAudioProcessorEditor::buttonClicked(juce::Button* button) {
                     if (errorMsg.isEmpty()) {
                         errorMsg = juce::String::formatted(
                             "Failed to load model. Expected config: buffer_length=%d, hidden_size=%d, num_layers=%d",
-                            lyrebird::ModelConfig::BUFFER_LENGTH,
-                            lyrebird::ModelConfig::HIDDEN_SIZE,
-                            lyrebird::ModelConfig::NUM_LAYERS);
+                            audioProcessor.getModelBufferLength(),
+                            audioProcessor.getModelHiddenSize(),
+                            audioProcessor.getModelNumLayers());
                     }
                     juce::AlertWindow::showMessageBoxAsync(
                         juce::AlertWindow::WarningIcon,
@@ -116,6 +137,19 @@ void LyrebirdAudioProcessorEditor::buttonClicked(juce::Button* button) {
         });
     } else if (button == &bypassButton) {
         *audioProcessor.bypassParam = bypassButton.getToggleState();
+    }
+}
+
+void LyrebirdAudioProcessorEditor::comboBoxChanged(juce::ComboBox* comboBox) {
+    if (comboBox == &modelSizeCombo) {
+        int selectedId = modelSizeCombo.getSelectedId();
+        if (selectedId > 0) {
+            auto newSize = static_cast<lyrebird::ModelSize>(selectedId - 1);
+            if (newSize != audioProcessor.getModelSize()) {
+                audioProcessor.setModelSize(newSize);
+                updateModelInfo();
+            }
+        }
     }
 }
 
@@ -130,13 +164,17 @@ void LyrebirdAudioProcessorEditor::updateModelInfo() {
         juce::File modelFile(audioProcessor.getLoadedModelPath());
         juce::String info = "Model: " + modelFile.getFileNameWithoutExtension() + "\n";
         info += juce::String::formatted("Buffer: %d | Hidden: %d | Layers: %d",
-            lyrebird::ModelConfig::BUFFER_LENGTH,
-            lyrebird::ModelConfig::HIDDEN_SIZE,
-            lyrebird::ModelConfig::NUM_LAYERS);
+            audioProcessor.getModelBufferLength(),
+            audioProcessor.getModelHiddenSize(),
+            audioProcessor.getModelNumLayers());
         modelInfoLabel.setText(info, juce::dontSendNotification);
         modelInfoLabel.setColour(juce::Label::textColourId, juce::Colours::lightgreen);
     } else {
-        modelInfoLabel.setText("No model loaded", juce::dontSendNotification);
+        juce::String info = "No model loaded\n";
+        info += juce::String::formatted("Size: %s (Buffer: %d)",
+            lyrebird::getModelSizeName(audioProcessor.getModelSize()),
+            audioProcessor.getModelBufferLength());
+        modelInfoLabel.setText(info, juce::dontSendNotification);
         modelInfoLabel.setColour(juce::Label::textColourId, juce::Colours::grey);
     }
 }

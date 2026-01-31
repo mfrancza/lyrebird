@@ -4,10 +4,16 @@ Export trained Lyrebird models to RTNeural-compatible JSON format.
 
 Usage:
     python export_rtneural.py model.pth output.json
+    python export_rtneural.py model.pth output.json --size small
 
     # Or in Python:
     from export_rtneural import export_to_rtneural
-    export_to_rtneural("model.pth", "output.json")
+    export_to_rtneural("model.pth", "output.json", size="small")
+
+Model Size Presets:
+    small:  buffer_length=128, hidden_size=32,  num_layers=2  (Raspberry Pi)
+    medium: buffer_length=256, hidden_size=64,  num_layers=2  (Laptop/Desktop)
+    large:  buffer_length=512, hidden_size=128, num_layers=3  (High-end Desktop)
 """
 
 import torch
@@ -15,14 +21,35 @@ import json
 import argparse
 from pathlib import Path
 
+# Model size presets matching the VST plugin
+MODEL_SIZE_PRESETS = {
+    "small": {
+        "buffer_length": 128,
+        "hidden_size": 32,
+        "num_layers": 2,
+    },
+    "medium": {
+        "buffer_length": 256,
+        "hidden_size": 64,
+        "num_layers": 2,
+    },
+    "large": {
+        "buffer_length": 512,
+        "hidden_size": 128,
+        "num_layers": 3,
+    },
+}
 
-def export_to_rtneural(model_path: str, output_path: str) -> dict:
+
+def export_to_rtneural(model_path: str, output_path: str, size: str = None) -> dict:
     """
     Export a trained Lyrebird model to RTNeural-compatible JSON format.
 
     Args:
         model_path: Path to the .pth model file
         output_path: Path to save the RTNeural JSON file
+        size: Optional model size preset ("small", "medium", "large").
+              If provided, validates the model matches the preset.
 
     Returns:
         The exported model dictionary
@@ -44,8 +71,45 @@ def export_to_rtneural(model_path: str, output_path: str) -> dict:
     print(f"  num_layers: {num_layers}")
     print(f"  output_size: {output_size}")
 
+    # Validate against size preset if specified
+    if size:
+        size = size.lower()
+        if size not in MODEL_SIZE_PRESETS:
+            raise ValueError(f"Unknown size '{size}'. Valid options: {list(MODEL_SIZE_PRESETS.keys())}")
+
+        preset = MODEL_SIZE_PRESETS[size]
+        errors = []
+
+        if buffer_length != preset["buffer_length"]:
+            errors.append(f"buffer_length: expected {preset['buffer_length']}, got {buffer_length}")
+        if hidden_size != preset["hidden_size"]:
+            errors.append(f"hidden_size: expected {preset['hidden_size']}, got {hidden_size}")
+        if num_layers != preset["num_layers"]:
+            errors.append(f"num_layers: expected {preset['num_layers']}, got {num_layers}")
+
+        if errors:
+            print(f"\nERROR: Model does not match '{size}' preset:")
+            for error in errors:
+                print(f"  - {error}")
+            print(f"\nTo train a '{size}' model, use these parameters:")
+            print(f"  buffer_length={preset['buffer_length']}")
+            print(f"  hidden_size={preset['hidden_size']}")
+            print(f"  num_layers={preset['num_layers']}")
+            raise ValueError(f"Model configuration does not match '{size}' preset")
+
+        print(f"\nModel matches '{size}' preset")
+
     # Get the state dict
     state_dict = checkpoint["model_state_dict"]
+
+    # Determine model size name if it matches a preset
+    model_size_name = None
+    for preset_name, preset in MODEL_SIZE_PRESETS.items():
+        if (buffer_length == preset["buffer_length"] and
+            hidden_size == preset["hidden_size"] and
+            num_layers == preset["num_layers"]):
+            model_size_name = preset_name
+            break
 
     # Build the RTNeural JSON structure
     rtneural_model = {
@@ -56,6 +120,10 @@ def export_to_rtneural(model_path: str, output_path: str) -> dict:
         },
         "layers": [],
     }
+
+    # Add model_size to config if it matches a preset
+    if model_size_name:
+        rtneural_model["config"]["model_size"] = model_size_name
 
     # The PyTorch model has layers indexed as:
     # network.1 = Linear(input -> hidden)   [layer 0]
@@ -119,16 +187,38 @@ def export_to_rtneural(model_path: str, output_path: str) -> dict:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Export Lyrebird models to RTNeural JSON format"
+        description="Export Lyrebird models to RTNeural JSON format",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Model Size Presets:
+  small   buffer_length=128, hidden_size=32,  num_layers=2  (Raspberry Pi)
+  medium  buffer_length=256, hidden_size=64,  num_layers=2  (Laptop/Desktop)
+  large   buffer_length=512, hidden_size=128, num_layers=3  (High-end Desktop)
+
+Examples:
+  python export_rtneural.py model.pth output.json
+  python export_rtneural.py model.pth output.json --size small
+        """
     )
     parser.add_argument("model_path", help="Path to the .pth model file")
     parser.add_argument("output_path", help="Path to save the RTNeural JSON file")
+    parser.add_argument(
+        "--size", "-s",
+        choices=["small", "medium", "large"],
+        help="Validate model matches a size preset (small/medium/large)"
+    )
 
     args = parser.parse_args()
 
-    export_to_rtneural(args.model_path, args.output_path)
-    print("\nDone! You can now load this model in the Lyrebird VST plugin.")
+    try:
+        export_to_rtneural(args.model_path, args.output_path, args.size)
+        print("\nDone! You can now load this model in the Lyrebird VST plugin.")
+    except ValueError as e:
+        print(f"\n{e}")
+        return 1
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+    sys.exit(main() or 0)
