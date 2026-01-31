@@ -44,12 +44,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Debug - Check requirements.txt after checkout
-        run: |
-          echo "=== After checkout ==="
-          head -3 requirements.txt
-          grep "^torch" requirements.txt
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -64,12 +58,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          echo "=== requirements.txt first 10 lines ==="
-          head -10 requirements.txt
-          echo "=== requirements.txt grep torch ==="
-          grep "^torch" requirements.txt
           pip install -r requirements.txt
-          pip install black ruff pytest 'torchcodec==0.9.1'
+          pip install black ruff pytest
 
       - name: Check formatting (black)
         run: black --check lyrebird.py test_lyrebird.py export_rtneural.py
