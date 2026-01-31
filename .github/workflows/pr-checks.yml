@@ -40,7 +40,7 @@ jobs:
   python-checks:
     needs: changes
     if: needs.changes.outputs.python == 'true'
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -49,8 +49,12 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install FFmpeg and dev libraries
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg libavutil-dev libavcodec-dev libavformat-dev
+      - name: Install FFmpeg libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg libavutil-dev libavcodec-dev libavformat-dev libswresample-dev
+          # Verify FFmpeg version
+          ffmpeg -version | head -1
 
       - name: Install dependencies
         run: |
