@@ -44,6 +44,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Debug - Check requirements.txt after checkout
+        run: |
+          echo "=== After checkout ==="
+          head -3 requirements.txt
+          grep "^torch" requirements.txt
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
