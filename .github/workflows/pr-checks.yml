@@ -69,7 +69,7 @@ jobs:
           echo "=== requirements.txt grep torch ==="
           grep "^torch" requirements.txt
           pip install -r requirements.txt
-          pip install black ruff pytest torchcodec
+          pip install black ruff pytest 'torchcodec==0.9.1'
 
       - name: Check formatting (black)
         run: black --check lyrebird.py test_lyrebird.py export_rtneural.py
