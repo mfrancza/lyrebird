@@ -51,7 +51,7 @@ class RealtimeProcessor:
         block_size: int = 128,
         channels: int = 1,
         use_onnx: bool = False,
-        device: str = 'cpu',
+        device: str = "cpu",
         input_device: Optional[int] = None,
         output_device: Optional[int] = None,
     ):
@@ -81,7 +81,7 @@ class RealtimeProcessor:
             block_size=block_size,
             input_device=input_device,
             output_device=output_device,
-            latency='low',
+            latency="low",
         )
 
         # Audio I/O handler
@@ -105,7 +105,7 @@ class RealtimeProcessor:
             input_size=input_size,
             hidden_size=self.hidden_size,
             num_layers=self.num_layers,
-            output_size=output_size
+            output_size=output_size,
         )
 
         # Load weights
@@ -115,9 +115,13 @@ class RealtimeProcessor:
             print(f"Loaded model from: {self.model_path}")
         else:
             import sys
+
             print("=" * 60, file=sys.stderr)
             print(f"WARNING: Model file not found: {self.model_path}", file=sys.stderr)
-            print("Running with randomly initialized model - output will be garbage!", file=sys.stderr)
+            print(
+                "Running with randomly initialized model - output will be garbage!",
+                file=sys.stderr,
+            )
             print("=" * 60, file=sys.stderr)
 
         self.model.to(self.device)
@@ -136,7 +140,7 @@ class RealtimeProcessor:
         try:
             import onnxruntime as ort
 
-            onnx_path = str(Path(self.model_path).with_suffix('.onnx'))
+            onnx_path = str(Path(self.model_path).with_suffix(".onnx"))
             if not os.path.exists(onnx_path):
                 print(f"ONNX model not found: {onnx_path}")
                 print("Run export_onnx.py to create it")
@@ -146,12 +150,12 @@ class RealtimeProcessor:
             sess_options = ort.SessionOptions()
             sess_options.intra_op_num_threads = 1
             sess_options.inter_op_num_threads = 1
-            sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+            sess_options.graph_optimization_level = (
+                ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+            )
 
             self._onnx_session = ort.InferenceSession(
-                onnx_path,
-                sess_options,
-                providers=['CPUExecutionProvider']
+                onnx_path, sess_options, providers=["CPUExecutionProvider"]
             )
             print(f"Loaded ONNX model: {onnx_path}")
 
@@ -187,8 +191,7 @@ class RealtimeProcessor:
             if self._onnx_session is not None:
                 # ONNX inference
                 ort_inputs = {
-                    self._onnx_session.get_inputs()[0].name:
-                    input_tensor.cpu().numpy()
+                    self._onnx_session.get_inputs()[0].name: input_tensor.cpu().numpy()
                 }
                 output = self._onnx_session.run(None, ort_inputs)[0]
                 self._output_buffer[i] = output[0]
@@ -233,17 +236,19 @@ class RealtimeProcessor:
     def print_stats(self) -> None:
         """Print processing statistics."""
         stats = self.get_stats()
-        budget = stats['budget_ms']
-        avg = stats['avg_callback_ms']
-        max_t = stats['max_callback_ms']
+        budget = stats["budget_ms"]
+        avg = stats["avg_callback_ms"]
+        max_t = stats["max_callback_ms"]
 
         cpu_pct = (avg / budget) * 100 if budget > 0 else 0
 
-        print(f"Blocks: {stats['total_blocks']:,} | "
-              f"Underruns: {stats['underruns']} | "
-              f"Overruns: {stats['overruns']} | "
-              f"Avg: {avg:.3f}ms / {budget:.2f}ms ({cpu_pct:.1f}%) | "
-              f"Max: {max_t:.3f}ms")
+        print(
+            f"Blocks: {stats['total_blocks']:,} | "
+            f"Underruns: {stats['underruns']} | "
+            f"Overruns: {stats['overruns']} | "
+            f"Avg: {avg:.3f}ms / {budget:.2f}ms ({cpu_pct:.1f}%) | "
+            f"Max: {max_t:.3f}ms"
+        )
 
 
 class BatchedRealtimeProcessor(RealtimeProcessor):
@@ -259,14 +264,13 @@ class BatchedRealtimeProcessor(RealtimeProcessor):
 
         # Use batched ring buffer
         self.batch_buffer = BatchRingBuffer(
-            self.buffer_length,
-            self.block_size,
-            self.channels
+            self.buffer_length, self.block_size, self.channels
         )
 
         # Pre-fill with zeros
-        zeros = np.zeros((self.channels, self.buffer_length + self.block_size),
-                        dtype=np.float32)
+        zeros = np.zeros(
+            (self.channels, self.buffer_length + self.block_size), dtype=np.float32
+        )
         for i in range(self.buffer_length + self.block_size):
             self.batch_buffer.push(zeros[:, i])
 
@@ -286,8 +290,7 @@ class BatchedRealtimeProcessor(RealtimeProcessor):
         if self._onnx_session is not None:
             # ONNX batched inference
             ort_inputs = {
-                self._onnx_session.get_inputs()[0].name:
-                input_tensor.cpu().numpy()
+                self._onnx_session.get_inputs()[0].name: input_tensor.cpu().numpy()
             }
             output = self._onnx_session.run(None, ort_inputs)[0]
             self._output_buffer[:] = output
@@ -302,7 +305,7 @@ class BatchedRealtimeProcessor(RealtimeProcessor):
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Real-time audio processor for Lyrebird models',
+        description="Real-time audio processor for Lyrebird models",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -323,32 +326,41 @@ Examples:
 
   # Run with manual model parameters (override preset)
   python realtime_processor.py --model model.pth --buffer-length 128 --hidden-size 64 --num-layers 1
-        """
+        """,
     )
 
-    parser.add_argument('--model', type=str, default='model.pth',
-                        help='Path to model file (.pth)')
+    parser.add_argument(
+        "--model", type=str, default="model.pth", help="Path to model file (.pth)"
+    )
 
     # Add model size arguments (--size or manual --buffer-length etc.)
-    add_size_arguments(parser, default_size='small')
-    parser.add_argument('--sample-rate', type=int, default=44100,
-                        help='Audio sample rate')
-    parser.add_argument('--block-size', type=int, default=128,
-                        help='Audio block size')
-    parser.add_argument('--channels', type=int, default=1,
-                        help='Number of audio channels')
-    parser.add_argument('--input-device', type=int, default=None,
-                        help='Input audio device index')
-    parser.add_argument('--output-device', type=int, default=None,
-                        help='Output audio device index')
-    parser.add_argument('--use-onnx', action='store_true',
-                        help='Use ONNX Runtime for inference')
-    parser.add_argument('--batched', action='store_true',
-                        help='Use batched processing')
-    parser.add_argument('--list-devices', action='store_true',
-                        help='List audio devices and exit')
-    parser.add_argument('--stats-interval', type=float, default=5.0,
-                        help='Statistics print interval in seconds')
+    add_size_arguments(parser, default_size="small")
+    parser.add_argument(
+        "--sample-rate", type=int, default=44100, help="Audio sample rate"
+    )
+    parser.add_argument("--block-size", type=int, default=128, help="Audio block size")
+    parser.add_argument(
+        "--channels", type=int, default=1, help="Number of audio channels"
+    )
+    parser.add_argument(
+        "--input-device", type=int, default=None, help="Input audio device index"
+    )
+    parser.add_argument(
+        "--output-device", type=int, default=None, help="Output audio device index"
+    )
+    parser.add_argument(
+        "--use-onnx", action="store_true", help="Use ONNX Runtime for inference"
+    )
+    parser.add_argument("--batched", action="store_true", help="Use batched processing")
+    parser.add_argument(
+        "--list-devices", action="store_true", help="List audio devices and exit"
+    )
+    parser.add_argument(
+        "--stats-interval",
+        type=float,
+        default=5.0,
+        help="Statistics print interval in seconds",
+    )
 
     args = parser.parse_args()
 
@@ -363,8 +375,9 @@ Examples:
     if args.size:
         print_size_info(size=args.size)
     else:
-        print_size_info(buffer_length=buffer_length, hidden_size=hidden_size,
-                        num_layers=num_layers)
+        print_size_info(
+            buffer_length=buffer_length, hidden_size=hidden_size, num_layers=num_layers
+        )
     print()
 
     # Select processor class
@@ -420,5 +433,5 @@ Examples:
         processor.stop()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

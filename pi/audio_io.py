@@ -17,13 +17,14 @@ import time
 @dataclass
 class AudioConfig:
     """Configuration for audio I/O."""
+
     sample_rate: int = 44100
     channels: int = 1
     block_size: int = 128
     dtype: np.dtype = np.float32
     input_device: Optional[int] = None
     output_device: Optional[int] = None
-    latency: str = 'low'  # 'low', 'high', or specific value in seconds
+    latency: str = "low"  # 'low', 'high', or specific value in seconds
 
 
 def list_devices() -> List[Dict[str, Any]]:
@@ -36,13 +37,13 @@ def list_devices() -> List[Dict[str, Any]]:
     devices = sd.query_devices()
     return [
         {
-            'index': i,
-            'name': d['name'],
-            'inputs': d['max_input_channels'],
-            'outputs': d['max_output_channels'],
-            'default_sr': d['default_samplerate'],
-            'is_default_input': i == sd.default.device[0],
-            'is_default_output': i == sd.default.device[1],
+            "index": i,
+            "name": d["name"],
+            "inputs": d["max_input_channels"],
+            "outputs": d["max_output_channels"],
+            "default_sr": d["default_samplerate"],
+            "is_default_input": i == sd.default.device[0],
+            "is_default_output": i == sd.default.device[1],
         }
         for i, d in enumerate(devices)
     ]
@@ -55,14 +56,16 @@ def print_devices() -> None:
     print("-" * 70)
     for d in devices:
         flags = []
-        if d['is_default_input']:
-            flags.append('*IN')
-        if d['is_default_output']:
-            flags.append('*OUT')
-        flag_str = ' '.join(flags)
-        print(f"[{d['index']:2d}] {d['name']:<40} "
-              f"in:{d['inputs']} out:{d['outputs']} "
-              f"sr:{int(d['default_sr'])} {flag_str}")
+        if d["is_default_input"]:
+            flags.append("*IN")
+        if d["is_default_output"]:
+            flags.append("*OUT")
+        flag_str = " ".join(flags)
+        print(
+            f"[{d['index']:2d}] {d['name']:<40} "
+            f"in:{d['inputs']} out:{d['outputs']} "
+            f"sr:{int(d['default_sr'])} {flag_str}"
+        )
     print("-" * 70)
 
 
@@ -80,8 +83,11 @@ class AudioIO:
                  Output shape: (block_size, channels)
     """
 
-    def __init__(self, config: AudioConfig,
-                 callback: Optional[Callable[[np.ndarray], np.ndarray]] = None):
+    def __init__(
+        self,
+        config: AudioConfig,
+        callback: Optional[Callable[[np.ndarray], np.ndarray]] = None,
+    ):
         self.config = config
         self._callback = callback
         self._stream: Optional[sd.Stream] = None
@@ -100,8 +106,14 @@ class AudioIO:
         """Set or update the processing callback."""
         self._callback = callback
 
-    def _audio_callback(self, indata: np.ndarray, outdata: np.ndarray,
-                        frames: int, time_info: Any, status: sd.CallbackFlags) -> None:
+    def _audio_callback(
+        self,
+        indata: np.ndarray,
+        outdata: np.ndarray,
+        frames: int,
+        time_info: Any,
+        status: sd.CallbackFlags,
+    ) -> None:
         """Internal sounddevice callback."""
         start_time = time.perf_counter()
 
@@ -149,7 +161,7 @@ class AudioIO:
             channels=self.config.channels,
             dtype=self.config.dtype,
             latency=self.config.latency,
-            callback=self._audio_callback
+            callback=self._audio_callback,
         )
 
         self._stream.start()
@@ -170,15 +182,18 @@ class AudioIO:
     def get_stats(self) -> Dict[str, Any]:
         """Get processing statistics."""
         with self._stats_lock:
-            avg_time = (sum(self._callback_times) / len(self._callback_times)
-                       if self._callback_times else 0)
+            avg_time = (
+                sum(self._callback_times) / len(self._callback_times)
+                if self._callback_times
+                else 0
+            )
             return {
-                'underruns': self._underruns,
-                'overruns': self._overruns,
-                'total_blocks': self._total_blocks,
-                'max_callback_ms': self._max_callback_time * 1000,
-                'avg_callback_ms': avg_time * 1000,
-                'budget_ms': self.config.block_size / self.config.sample_rate * 1000,
+                "underruns": self._underruns,
+                "overruns": self._overruns,
+                "total_blocks": self._total_blocks,
+                "max_callback_ms": self._max_callback_time * 1000,
+                "avg_callback_ms": avg_time * 1000,
+                "budget_ms": self.config.block_size / self.config.sample_rate * 1000,
             }
 
     def reset_stats(self) -> None:
@@ -260,11 +275,12 @@ class AudioFileWriter:
 
         self._running = True
         self._file = sf.SoundFile(
-            self.filename, 'w',
+            self.filename,
+            "w",
             samplerate=self.sample_rate,
             channels=self.channels,
-            format='WAV',
-            subtype='FLOAT'
+            format="WAV",
+            subtype="FLOAT",
         )
 
         self._thread = threading.Thread(target=self._write_loop, daemon=True)

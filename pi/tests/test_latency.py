@@ -63,7 +63,7 @@ def measure_loopback_latency(
 
         # Record input
         if pos + block_len <= max_samples:
-            recorded[pos:pos + block_len] = indata
+            recorded[pos : pos + block_len] = indata
 
         # Generate output with periodic impulses
         outdata = np.zeros_like(indata)
@@ -77,7 +77,7 @@ def measure_loopback_latency(
 
         # Record what we sent
         if pos + block_len <= max_samples:
-            sent[pos:pos + block_len] = outdata
+            sent[pos : pos + block_len] = outdata
 
         record_pos[0] = pos + block_len
         return outdata
@@ -106,7 +106,7 @@ def measure_loopback_latency(
 
     # Find impulses in recorded signal
     if len(impulse_positions) == 0:
-        return None, {'error': 'No impulses generated'}
+        return None, {"error": "No impulses generated"}
 
     # Use cross-correlation to find delay
     # Flatten to mono for analysis
@@ -120,32 +120,32 @@ def measure_loopback_latency(
     # Check if we got any signal
     if np.abs(recorded_mono).max() < 0.01:
         return None, {
-            'error': 'No signal detected in recording',
-            'hint': 'Check loopback connection'
+            "error": "No signal detected in recording",
+            "hint": "Check loopback connection",
         }
 
     # Cross-correlate
-    correlation = np.correlate(recorded_mono, sent_mono, mode='full')
+    correlation = np.correlate(recorded_mono, sent_mono, mode="full")
     lag_samples = np.argmax(correlation) - len(sent_mono) + 1
 
     # Sanity check
     if lag_samples < 0 or lag_samples > sample_rate:  # Max 1 second
         return None, {
-            'error': f'Invalid lag detected: {lag_samples} samples',
-            'correlation_max': float(correlation.max()),
+            "error": f"Invalid lag detected: {lag_samples} samples",
+            "correlation_max": float(correlation.max()),
         }
 
     latency_ms = (lag_samples / sample_rate) * 1000
 
     details = {
-        'lag_samples': lag_samples,
-        'latency_ms': latency_ms,
-        'sample_rate': sample_rate,
-        'block_size': block_size,
-        'num_impulses': len(impulse_positions),
-        'recorded_samples': actual_length,
-        'correlation_max': float(correlation.max()),
-        'theoretical_min_ms': (block_size * 2 / sample_rate) * 1000,
+        "lag_samples": lag_samples,
+        "latency_ms": latency_ms,
+        "sample_rate": sample_rate,
+        "block_size": block_size,
+        "num_impulses": len(impulse_positions),
+        "recorded_samples": actual_length,
+        "correlation_max": float(correlation.max()),
+        "theoretical_min_ms": (block_size * 2 / sample_rate) * 1000,
     }
 
     return latency_ms, details
@@ -188,20 +188,20 @@ def measure_callback_latency(
     audio.stop()
 
     if len(callback_times) < 10:
-        return {'error': 'Not enough callbacks recorded'}
+        return {"error": "Not enough callbacks recorded"}
 
     times = np.array(callback_times)
     expected_interval = (config.block_size / config.sample_rate) * 1000
 
     return {
-        'expected_interval_ms': expected_interval,
-        'mean_interval_ms': float(np.mean(times)),
-        'std_interval_ms': float(np.std(times)),
-        'min_interval_ms': float(np.min(times)),
-        'max_interval_ms': float(np.max(times)),
-        'jitter_ms': float(np.std(times)),
-        'num_callbacks': len(callback_times),
-        'audio_stats': audio.get_stats(),
+        "expected_interval_ms": expected_interval,
+        "mean_interval_ms": float(np.mean(times)),
+        "std_interval_ms": float(np.std(times)),
+        "min_interval_ms": float(np.min(times)),
+        "max_interval_ms": float(np.max(times)),
+        "jitter_ms": float(np.std(times)),
+        "num_callbacks": len(callback_times),
+        "audio_stats": audio.get_stats(),
     }
 
 
@@ -250,45 +250,52 @@ def run_processor_latency_test(
     processor.stop()
 
     return {
-        'duration_s': duration,
-        'total_blocks': stats['total_blocks'],
-        'underruns': stats['underruns'],
-        'overruns': stats['overruns'],
-        'avg_callback_ms': stats['avg_callback_ms'],
-        'max_callback_ms': stats['max_callback_ms'],
-        'budget_ms': stats['budget_ms'],
-        'cpu_utilization_pct': (stats['avg_callback_ms'] / stats['budget_ms']) * 100,
+        "duration_s": duration,
+        "total_blocks": stats["total_blocks"],
+        "underruns": stats["underruns"],
+        "overruns": stats["overruns"],
+        "avg_callback_ms": stats["avg_callback_ms"],
+        "max_callback_ms": stats["max_callback_ms"],
+        "budget_ms": stats["budget_ms"],
+        "cpu_utilization_pct": (stats["avg_callback_ms"] / stats["budget_ms"]) * 100,
     }
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Latency measurement tests for Lyrebird',
+        description="Latency measurement tests for Lyrebird",
     )
 
-    parser.add_argument('--test', choices=['loopback', 'callback', 'processor', 'all'],
-                        default='callback',
-                        help='Test to run')
-    parser.add_argument('--sample-rate', type=int, default=44100,
-                        help='Audio sample rate')
-    parser.add_argument('--block-size', type=int, default=128,
-                        help='Audio block size')
-    parser.add_argument('--channels', type=int, default=1,
-                        help='Number of channels')
-    parser.add_argument('--input-device', type=int, default=None,
-                        help='Input device index')
-    parser.add_argument('--output-device', type=int, default=None,
-                        help='Output device index')
-    parser.add_argument('--duration', type=float, default=5.0,
-                        help='Test duration in seconds')
-    parser.add_argument('--model', type=str, default='model.pth',
-                        help='Model path (for processor test)')
+    parser.add_argument(
+        "--test",
+        choices=["loopback", "callback", "processor", "all"],
+        default="callback",
+        help="Test to run",
+    )
+    parser.add_argument(
+        "--sample-rate", type=int, default=44100, help="Audio sample rate"
+    )
+    parser.add_argument("--block-size", type=int, default=128, help="Audio block size")
+    parser.add_argument("--channels", type=int, default=1, help="Number of channels")
+    parser.add_argument(
+        "--input-device", type=int, default=None, help="Input device index"
+    )
+    parser.add_argument(
+        "--output-device", type=int, default=None, help="Output device index"
+    )
+    parser.add_argument(
+        "--duration", type=float, default=5.0, help="Test duration in seconds"
+    )
+    parser.add_argument(
+        "--model", type=str, default="model.pth", help="Model path (for processor test)"
+    )
 
     # Add model size arguments (--size or manual --buffer-length etc.)
-    add_size_arguments(parser, default_size='small')
+    add_size_arguments(parser, default_size="small")
 
-    parser.add_argument('--list-devices', action='store_true',
-                        help='List audio devices')
+    parser.add_argument(
+        "--list-devices", action="store_true", help="List audio devices"
+    )
 
     args = parser.parse_args()
 
@@ -309,28 +316,32 @@ def main():
     print(f"Sample rate: {config.sample_rate} Hz")
     print(f"Block size: {config.block_size} samples")
     print(f"Channels: {config.channels}")
-    print(f"Theoretical min latency: {(config.block_size * 2 / config.sample_rate) * 1000:.2f} ms")
+    print(
+        f"Theoretical min latency: {(config.block_size * 2 / config.sample_rate) * 1000:.2f} ms"
+    )
     print()
 
-    tests_to_run = ['loopback', 'callback', 'processor'] if args.test == 'all' else [args.test]
+    tests_to_run = (
+        ["loopback", "callback", "processor"] if args.test == "all" else [args.test]
+    )
 
     for test in tests_to_run:
         print(f"\n{'=' * 60}")
         print(f"Test: {test}")
-        print('=' * 60)
+        print("=" * 60)
 
-        if test == 'callback':
+        if test == "callback":
             results = measure_callback_latency(config, args.duration)
             print("\nResults:")
             for key, value in results.items():
-                if key == 'audio_stats':
+                if key == "audio_stats":
                     continue
                 if isinstance(value, float):
                     print(f"  {key}: {value:.3f}")
                 else:
                     print(f"  {key}: {value}")
 
-        elif test == 'loopback':
+        elif test == "loopback":
             latency, details = measure_loopback_latency(config, args.duration)
             print("\nResults:")
             if latency is not None:
@@ -339,10 +350,10 @@ def main():
                 print(f"  Theoretical minimum: {details['theoretical_min_ms']:.2f} ms")
             else:
                 print(f"  Error: {details.get('error', 'Unknown')}")
-                if 'hint' in details:
+                if "hint" in details:
                     print(f"  Hint: {details['hint']}")
 
-        elif test == 'processor':
+        elif test == "processor":
             # Resolve model size arguments
             buffer_length, hidden_size, num_layers = resolve_size_arguments(args)
 
@@ -361,10 +372,10 @@ def main():
                 else:
                     print(f"  {key}: {value}")
 
-            if results['underruns'] > 0:
+            if results["underruns"] > 0:
                 print("\nWARNING: Buffer underruns detected!")
                 print("Consider increasing block size or using a smaller model.")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

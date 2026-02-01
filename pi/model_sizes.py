@@ -58,33 +58,34 @@ def add_size_arguments(parser, default_size: str = None) -> None:
         parser: argparse.ArgumentParser instance
         default_size: Default size preset (if None, manual args are required)
     """
-    group = parser.add_argument_group('model size')
+    group = parser.add_argument_group("model size")
 
     group.add_argument(
-        '--size', '-s',
+        "--size",
+        "-s",
         type=str,
-        choices=['small', 'medium', 'large'],
+        choices=["small", "medium", "large"],
         default=default_size,
-        help=f'Model size preset (default: {default_size}). '
-             'Small: 128/32/2 (Pi), Medium: 256/64/2 (Desktop), Large: 512/128/3 (High-end)'
+        help=f"Model size preset (default: {default_size}). "
+        "Small: 128/32/2 (Pi), Medium: 256/64/2 (Desktop), Large: 512/128/3 (High-end)",
     )
     group.add_argument(
-        '--buffer-length',
+        "--buffer-length",
         type=int,
         default=None,
-        help='Model buffer length (overrides --size)'
+        help="Model buffer length (overrides --size)",
     )
     group.add_argument(
-        '--hidden-size',
+        "--hidden-size",
         type=int,
         default=None,
-        help='Model hidden size (overrides --size)'
+        help="Model hidden size (overrides --size)",
     )
     group.add_argument(
-        '--num-layers',
+        "--num-layers",
         type=int,
         default=None,
-        help='Model number of layers (overrides --size)'
+        help="Model number of layers (overrides --size)",
     )
 
 
@@ -105,11 +106,13 @@ def resolve_size_arguments(args) -> tuple:
         ValueError: If neither --size nor manual args are provided
     """
     # Check for manual overrides
-    has_manual = any([
-        args.buffer_length is not None,
-        args.hidden_size is not None,
-        args.num_layers is not None,
-    ])
+    has_manual = any(
+        [
+            args.buffer_length is not None,
+            args.hidden_size is not None,
+            args.num_layers is not None,
+        ]
+    )
 
     if has_manual:
         # Use manual values, with defaults from size preset if specified
@@ -134,11 +137,17 @@ def resolve_size_arguments(args) -> tuple:
         return preset["buffer_length"], preset["hidden_size"], preset["num_layers"]
 
     else:
-        raise ValueError("Either --size or manual --buffer-length/--hidden-size required")
+        raise ValueError(
+            "Either --size or manual --buffer-length/--hidden-size required"
+        )
 
 
-def print_size_info(size: str = None, buffer_length: int = None,
-                    hidden_size: int = None, num_layers: int = None) -> None:
+def print_size_info(
+    size: str = None,
+    buffer_length: int = None,
+    hidden_size: int = None,
+    num_layers: int = None,
+) -> None:
     """Print model size information."""
     if size:
         preset = get_preset(size)

@@ -51,11 +51,11 @@ def export_to_onnx(
         input_size=input_size,
         hidden_size=hidden_size,
         num_layers=num_layers,
-        output_size=output_size
+        output_size=output_size,
     )
 
     # Load weights
-    state_dict = torch.load(model_path, map_location='cpu')
+    state_dict = torch.load(model_path, map_location="cpu")
     model.load_state_dict(state_dict)
     model.eval()
 
@@ -76,12 +76,16 @@ def export_to_onnx(
         model,
         dummy_input,
         output_path,
-        input_names=['input'],
-        output_names=['output'],
-        dynamic_axes={
-            'input': {0: 'batch_size'},
-            'output': {0: 'batch_size'},
-        } if batch_size == 1 else None,
+        input_names=["input"],
+        output_names=["output"],
+        dynamic_axes=(
+            {
+                "input": {0: "batch_size"},
+                "output": {0: "batch_size"},
+            }
+            if batch_size == 1
+            else None
+        ),
         opset_version=opset_version,
         do_constant_folding=True,
     )
@@ -92,8 +96,9 @@ def export_to_onnx(
     verify_onnx(output_path, dummy_input, model)
 
 
-def verify_onnx(onnx_path: str, dummy_input: torch.Tensor,
-                pytorch_model: torch.nn.Module) -> None:
+def verify_onnx(
+    onnx_path: str, dummy_input: torch.Tensor, pytorch_model: torch.nn.Module
+) -> None:
     """Verify ONNX model produces same output as PyTorch."""
     try:
         import onnx
@@ -109,12 +114,12 @@ def verify_onnx(onnx_path: str, dummy_input: torch.Tensor,
 
         # Run inference with ONNX Runtime
         sess_options = ort.SessionOptions()
-        sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+        sess_options.graph_optimization_level = (
+            ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+        )
 
         session = ort.InferenceSession(
-            onnx_path,
-            sess_options,
-            providers=['CPUExecutionProvider']
+            onnx_path, sess_options, providers=["CPUExecutionProvider"]
         )
 
         # Compare outputs
@@ -195,7 +200,7 @@ def optimize_onnx(input_path: str, output_path: str) -> None:
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Export Lyrebird models to ONNX format',
+        description="Export Lyrebird models to ONNX format",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -213,25 +218,33 @@ Examples:
 
   # Export with manual parameters (override preset)
   python export_onnx.py --model model.pth --buffer-length 128 --hidden-size 64 --num-layers 2
-        """
+        """,
     )
 
-    parser.add_argument('--model', '-m', type=str, required=True,
-                        help='Path to trained model (.pth)')
-    parser.add_argument('--output', '-o', type=str, default=None,
-                        help='Output path for ONNX model (default: same as input with .onnx)')
+    parser.add_argument(
+        "--model", "-m", type=str, required=True, help="Path to trained model (.pth)"
+    )
+    parser.add_argument(
+        "--output",
+        "-o",
+        type=str,
+        default=None,
+        help="Output path for ONNX model (default: same as input with .onnx)",
+    )
 
     # Add model size arguments (--size or manual --buffer-length etc.)
     add_size_arguments(parser, default_size=None)
 
-    parser.add_argument('--channels', type=int, default=1,
-                        help='Number of audio channels')
-    parser.add_argument('--batch-size', type=int, default=1,
-                        help='Batch size for export')
-    parser.add_argument('--opset', type=int, default=17,
-                        help='ONNX opset version')
-    parser.add_argument('--optimize', action='store_true',
-                        help='Apply additional ONNX optimizations')
+    parser.add_argument(
+        "--channels", type=int, default=1, help="Number of audio channels"
+    )
+    parser.add_argument(
+        "--batch-size", type=int, default=1, help="Batch size for export"
+    )
+    parser.add_argument("--opset", type=int, default=17, help="ONNX opset version")
+    parser.add_argument(
+        "--optimize", action="store_true", help="Apply additional ONNX optimizations"
+    )
 
     args = parser.parse_args()
 
@@ -242,14 +255,15 @@ Examples:
     if args.size:
         print_size_info(size=args.size)
     else:
-        print_size_info(buffer_length=buffer_length, hidden_size=hidden_size,
-                        num_layers=num_layers)
+        print_size_info(
+            buffer_length=buffer_length, hidden_size=hidden_size, num_layers=num_layers
+        )
     print()
 
     # Determine output path
     output_path = args.output
     if output_path is None:
-        output_path = str(Path(args.model).with_suffix('.onnx'))
+        output_path = str(Path(args.model).with_suffix(".onnx"))
 
     # Export
     export_to_onnx(
@@ -266,9 +280,9 @@ Examples:
     # Optional optimization
     if args.optimize:
         output_stem = Path(output_path).stem
-        opt_path = str(Path(output_path).with_stem(output_stem + '_optimized'))
+        opt_path = str(Path(output_path).with_stem(output_stem + "_optimized"))
         optimize_onnx(output_path, opt_path)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

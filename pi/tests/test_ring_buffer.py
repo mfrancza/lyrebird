@@ -75,10 +75,7 @@ class TestRingBuffer:
             buffer.push(sample)
 
         result = buffer.get_buffer()
-        expected = np.array([
-            [0.0, 1.0, 2.0],
-            [0.0, 10.0, 20.0]
-        ])
+        expected = np.array([[0.0, 1.0, 2.0], [0.0, 10.0, 20.0]])
         np.testing.assert_array_almost_equal(result, expected)
 
     def test_get_tensor(self):
@@ -104,7 +101,7 @@ class TestRingBuffer:
         for i in range(4):
             buffer.push(np.array([float(i)]))
 
-        device = torch.device('cpu')
+        device = torch.device("cpu")
         tensor = buffer.get_tensor(device)
 
         assert tensor.device == device
@@ -248,5 +245,5 @@ class TestRingBufferThreadSafety:
         assert len(errors) == 0, f"Errors occurred: {errors}"
 
 
-if __name__ == '__main__':
-    pytest.main([__file__, '-v'])
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

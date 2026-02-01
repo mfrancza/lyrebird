@@ -24,8 +24,9 @@ class RingBuffer:
         dtype: NumPy dtype for internal storage (default: float32)
     """
 
-    def __init__(self, buffer_length: int, num_channels: int = 1,
-                 dtype: np.dtype = np.float32):
+    def __init__(
+        self, buffer_length: int, num_channels: int = 1, dtype: np.dtype = np.float32
+    ):
         self.buffer_length = buffer_length
         self.num_channels = num_channels
         self.dtype = dtype
@@ -57,7 +58,7 @@ class RingBuffer:
 
             if num_samples >= self.buffer_length:
                 # If input is larger than buffer, just keep the last buffer_length samples
-                self._buffer[:] = samples[:, -self.buffer_length:]
+                self._buffer[:] = samples[:, -self.buffer_length :]
                 self._write_pos = 0
                 self._samples_written += num_samples
             else:
@@ -66,12 +67,14 @@ class RingBuffer:
 
                 if end_pos <= self.buffer_length:
                     # Simple case: no wrap-around
-                    self._buffer[:, self._write_pos:end_pos] = samples
+                    self._buffer[:, self._write_pos : end_pos] = samples
                 else:
                     # Wrap-around case
                     first_part = self.buffer_length - self._write_pos
-                    self._buffer[:, self._write_pos:] = samples[:, :first_part]
-                    self._buffer[:, :num_samples - first_part] = samples[:, first_part:]
+                    self._buffer[:, self._write_pos :] = samples[:, :first_part]
+                    self._buffer[:, : num_samples - first_part] = samples[
+                        :, first_part:
+                    ]
 
                 self._write_pos = end_pos % self.buffer_length
                 self._samples_written += num_samples
@@ -88,10 +91,13 @@ class RingBuffer:
                 return self._buffer.copy()
             else:
                 # Reorder to chronological: [write_pos:] then [:write_pos]
-                return np.concatenate([
-                    self._buffer[:, self._write_pos:],
-                    self._buffer[:, :self._write_pos]
-                ], axis=1)
+                return np.concatenate(
+                    [
+                        self._buffer[:, self._write_pos :],
+                        self._buffer[:, : self._write_pos],
+                    ],
+                    axis=1,
+                )
 
     def get_tensor(self, device: Optional[torch.device] = None) -> torch.Tensor:
         """
@@ -106,13 +112,16 @@ class RingBuffer:
             Tensor of shape (1, num_channels, buffer_length) - batched for model input
         """
         if device is None:
-            device = torch.device('cpu')
+            device = torch.device("cpu")
 
         # Allocate tensor buffer if needed or device changed
         if self._tensor_buffer is None or self._tensor_device != device:
             self._tensor_buffer = torch.zeros(
-                1, self.num_channels, self.buffer_length,
-                dtype=torch.float32, device=device
+                1,
+                self.num_channels,
+                self.buffer_length,
+                dtype=torch.float32,
+                device=device,
             )
             self._tensor_device = device
 
@@ -129,10 +138,13 @@ class RingBuffer:
         if self._write_pos == 0:
             return self._buffer.copy()
         else:
-            return np.concatenate([
-                self._buffer[:, self._write_pos:],
-                self._buffer[:, :self._write_pos]
-            ], axis=1)
+            return np.concatenate(
+                [
+                    self._buffer[:, self._write_pos :],
+                    self._buffer[:, : self._write_pos],
+                ],
+                axis=1,
+            )
 
     def is_ready(self) -> bool:
         """Check if buffer has been filled at least once."""
@@ -225,13 +237,16 @@ class BatchRingBuffer:
             Tensor ready for batched model inference
         """
         if device is None:
-            device = torch.device('cpu')
+            device = torch.device("cpu")
 
         # Allocate tensor if needed
         if self._batch_tensor is None or self._tensor_device != device:
             self._batch_tensor = torch.zeros(
-                self.batch_size, self.num_channels, self.buffer_length,
-                dtype=torch.float32, device=device
+                self.batch_size,
+                self.num_channels,
+                self.buffer_length,
+                dtype=torch.float32,
+                device=device,
             )
             self._tensor_device = device
 
@@ -241,9 +256,7 @@ class BatchRingBuffer:
             for i in range(self.batch_size):
                 start = i
                 end = start + self.buffer_length
-                self._batch_tensor[i].copy_(
-                    torch.from_numpy(history[:, start:end])
-                )
+                self._batch_tensor[i].copy_(torch.from_numpy(history[:, start:end]))
 
         return self._batch_tensor
 
