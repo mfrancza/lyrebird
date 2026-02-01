@@ -117,10 +117,22 @@ class RingBuffer:
             self._tensor_device = device
 
         # Get buffer in chronological order and copy to tensor
-        buffer_data = self.get_buffer()
-        self._tensor_buffer[0].copy_(torch.from_numpy(buffer_data))
+        # Note: get_buffer() returns a copy, ensuring thread safety
+        with self._lock:
+            buffer_data = self._get_buffer_unlocked()
+            self._tensor_buffer[0].copy_(torch.from_numpy(buffer_data))
 
         return self._tensor_buffer
+
+    def _get_buffer_unlocked(self) -> np.ndarray:
+        """Get buffer contents without acquiring lock (caller must hold lock)."""
+        if self._write_pos == 0:
+            return self._buffer.copy()
+        else:
+            return np.concatenate([
+                self._buffer[:, self._write_pos:],
+                self._buffer[:, :self._write_pos]
+            ], axis=1)
 
     def is_ready(self) -> bool:
         """Check if buffer has been filled at least once."""
@@ -223,11 +235,9 @@ class BatchRingBuffer:
             )
             self._tensor_device = device
 
-        # Get full history
-        history = self._history.get_buffer()
-
-        # Create sliding windows for each position in the batch
+        # Get full history and create sliding windows under lock for thread safety
         with self._lock:
+            history = self._history.get_buffer()
             for i in range(self.batch_size):
                 start = i
                 end = start + self.buffer_length

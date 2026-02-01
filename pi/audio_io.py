@@ -200,6 +200,10 @@ class AudioIO:
         """Get last error from callback."""
         return self._error
 
+    def clear_error(self) -> None:
+        """Clear the last error."""
+        self._error = None
+
     def __enter__(self):
         self.start()
         return self

@@ -213,7 +213,7 @@ journalctl -u lyrebird -f
 ### Buffer Underruns (Clicks/Pops)
 
 1. Increase block size: `--block-size 256`
-2. Use a smaller model (Tiny instead of Medium)
+2. Use a smaller model (Small instead of Medium)
 3. Enable CPU isolation in kernel parameters
 4. Check CPU temperature isn't throttling
 

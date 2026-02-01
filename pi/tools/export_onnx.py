@@ -178,27 +178,19 @@ def optimize_onnx(input_path: str, output_path: str) -> None:
         output_path: Path for optimized output
     """
     try:
-        from onnxruntime.transformers import optimizer
         import onnx
 
         print(f"\nApplying ONNX optimizations...")
 
-        # Load model
+        # Load model and run shape inference to enable runtime optimizations
         model = onnx.load(input_path)
+        inferred_model = onnx.shape_inference.infer_shapes(model)
 
-        # Apply optimizations
-        optimized = optimizer.optimize_model(
-            input_path,
-            model_type='bert',  # Generic optimization
-            num_heads=0,
-            hidden_size=0,
-        )
-
-        optimized.save_model_to_file(output_path)
+        onnx.save(inferred_model, output_path)
         print(f"Optimized model saved to: {output_path}")
 
     except ImportError:
-        print("onnxruntime-tools not installed, skipping optimization")
+        print("onnx not installed, skipping optimization")
 
 
 def main():
@@ -257,7 +249,7 @@ Examples:
     # Determine output path
     output_path = args.output
     if output_path is None:
-        output_path = args.model.replace('.pth', '.onnx')
+        output_path = str(Path(args.model).with_suffix('.onnx'))
 
     # Export
     export_to_onnx(
@@ -273,7 +265,8 @@ Examples:
 
     # Optional optimization
     if args.optimize:
-        opt_path = output_path.replace('.onnx', '_optimized.onnx')
+        output_stem = Path(output_path).stem
+        opt_path = str(Path(output_path).with_stem(output_stem + '_optimized'))
         optimize_onnx(output_path, opt_path)
 
 

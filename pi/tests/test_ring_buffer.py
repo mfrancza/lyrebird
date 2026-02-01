@@ -7,10 +7,10 @@ import torch
 import pytest
 
 # Add parent directories to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-# Import directly from module to avoid sounddevice dependency
-from ring_buffer import RingBuffer, BatchRingBuffer
+# Import from pi.ring_buffer to match package structure
+from pi.ring_buffer import RingBuffer, BatchRingBuffer
 
 
 class TestRingBuffer:

@@ -120,13 +120,19 @@ if [ "$SYSTEM_INSTALL" = true ]; then
     read -p "Install systemd service for auto-start? [y/N] " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
-        # Update service file paths
-        sed -e "s|/home/pi/lyrebird|$PROJECT_DIR|g" \
-            "$SCRIPT_DIR/config/lyrebird.service" > /etc/systemd/system/lyrebird.service
+        SERVICE_FILE="$SCRIPT_DIR/config/lyrebird.service"
+        if [ -f "$SERVICE_FILE" ]; then
+            # Update service file paths (using # as delimiter for paths with special chars)
+            sed -e "s#/home/pi/lyrebird#$PROJECT_DIR#g" \
+                "$SERVICE_FILE" > /etc/systemd/system/lyrebird.service
 
-        systemctl daemon-reload
-        echo "Service installed. Enable with: sudo systemctl enable lyrebird"
-        echo "Start with: sudo systemctl start lyrebird"
+            systemctl daemon-reload
+            echo "Service installed. Enable with: sudo systemctl enable lyrebird"
+            echo "Start with: sudo systemctl start lyrebird"
+        else
+            echo "Error: systemd service template not found at: $SERVICE_FILE"
+            echo "Skipping systemd service installation."
+        fi
     fi
 else
     echo "Step 6: Skipping systemd setup (run with sudo)"

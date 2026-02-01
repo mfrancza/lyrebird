@@ -183,10 +183,10 @@ def stress_test(
         'num_samples': len(samples),
         'batch_time_mean_ms': np.mean(batch_times),
         'batch_time_max_ms': np.max(batch_times),
-        'temp_start_c': temps[0] if temps else None,
-        'temp_end_c': temps[-1] if temps else None,
-        'temp_max_c': max(temps) if temps else None,
-        'throttled': max(temps) >= 80 if temps else None,
+        'temp_start_c': temps[0] if len(temps) > 0 else None,
+        'temp_end_c': temps[-1] if len(temps) > 0 else None,
+        'temp_max_c': max(temps) if len(temps) > 0 else None,
+        'throttled': max(temps) >= 80 if len(temps) > 0 else None,
         'samples': samples,
     }
 
@@ -210,6 +210,7 @@ def print_system_info() -> None:
                     print(f"CPU: {line.split(':')[1].strip()}")
                     break
     except FileNotFoundError:
+        # /proc/cpuinfo may not exist on non-Linux systems; skip CPU model info
         pass
 
     # Temperature

@@ -114,8 +114,11 @@ class RealtimeProcessor:
             self.model.load_state_dict(state_dict)
             print(f"Loaded model from: {self.model_path}")
         else:
-            print(f"Warning: Model file not found: {self.model_path}")
-            print("Running with randomly initialized model")
+            import sys
+            print("=" * 60, file=sys.stderr)
+            print(f"WARNING: Model file not found: {self.model_path}", file=sys.stderr)
+            print("Running with randomly initialized model - output will be garbage!", file=sys.stderr)
+            print("=" * 60, file=sys.stderr)
 
         self.model.to(self.device)
         self.model.eval()
@@ -133,7 +136,7 @@ class RealtimeProcessor:
         try:
             import onnxruntime as ort
 
-            onnx_path = self.model_path.replace('.pth', '.onnx')
+            onnx_path = str(Path(self.model_path).with_suffix('.onnx'))
             if not os.path.exists(onnx_path):
                 print(f"ONNX model not found: {onnx_path}")
                 print("Run export_onnx.py to create it")

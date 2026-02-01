@@ -1,5 +1,8 @@
 # Lyrebird Raspberry Pi Dependencies
 # Minimal dependencies for real-time audio processing (no CUDA)
+#
+# WARNING: Do NOT install PyTorch on Raspberry Pi via "pip install -r requirements-pi.txt".
+# Instead, run the install.sh script which installs the correct CPU-only wheel for ARM.
 
 # Core ML framework - CPU only
 # For Pi 4 (armv7l/aarch64), install via pip or use PyTorch wheels

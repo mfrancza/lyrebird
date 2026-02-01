@@ -11,12 +11,10 @@ Group=audio
 # Working directory
 WorkingDirectory=/home/pi/lyrebird
 
-# Main process
+# Main process - uses Small model preset (optimized for Pi)
 ExecStart=/home/pi/lyrebird/venv/bin/python pi/realtime_processor.py \
-    --model models/small/model.pth \
-    --buffer-length 128 \
-    --hidden-size 64 \
-    --num-layers 1 \
+    --model models/big_muff_small.pth \
+    --size small \
     --sample-rate 44100 \
     --block-size 128 \
     --channels 1
