@@ -103,7 +103,11 @@ class AudioIO:
         self._callback_times: List[float] = []
 
     def set_callback(self, callback: Callable[[np.ndarray], np.ndarray]) -> None:
-        """Set or update the processing callback."""
+        """Set or update the processing callback.
+
+        Warning: Do not call this while the audio stream is running.
+        Stop the stream first, update the callback, then restart.
+        """
         self._callback = callback
 
     def _audio_callback(

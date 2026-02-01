@@ -148,7 +148,8 @@ class RingBuffer:
 
     def is_ready(self) -> bool:
         """Check if buffer has been filled at least once."""
-        return self._samples_written >= self.buffer_length
+        with self._lock:
+            return self._samples_written >= self.buffer_length
 
     def reset(self) -> None:
         """Clear the buffer and reset state."""
@@ -160,7 +161,8 @@ class RingBuffer:
     @property
     def samples_written(self) -> int:
         """Total number of samples written to buffer."""
-        return self._samples_written
+        with self._lock:
+            return self._samples_written
 
 
 class BatchRingBuffer:
@@ -239,19 +241,20 @@ class BatchRingBuffer:
         if device is None:
             device = torch.device("cpu")
 
-        # Allocate tensor if needed
-        if self._batch_tensor is None or self._tensor_device != device:
-            self._batch_tensor = torch.zeros(
-                self.batch_size,
-                self.num_channels,
-                self.buffer_length,
-                dtype=torch.float32,
-                device=device,
-            )
-            self._tensor_device = device
-
         # Get full history and create sliding windows under lock for thread safety
+        # Tensor allocation is also inside lock to prevent race conditions
         with self._lock:
+            # Allocate tensor if needed
+            if self._batch_tensor is None or self._tensor_device != device:
+                self._batch_tensor = torch.zeros(
+                    self.batch_size,
+                    self.num_channels,
+                    self.buffer_length,
+                    dtype=torch.float32,
+                    device=device,
+                )
+                self._tensor_device = device
+
             history = self._history.get_buffer()
             for i in range(self.batch_size):
                 start = i
@@ -262,7 +265,8 @@ class BatchRingBuffer:
 
     def get_pending_count(self) -> int:
         """Get number of samples pending in partial batch."""
-        return self._batch_pos
+        with self._lock:
+            return self._batch_pos
 
     def is_ready(self) -> bool:
         """Check if buffer has enough history for processing."""

@@ -114,8 +114,6 @@ class RealtimeProcessor:
             self.model.load_state_dict(state_dict)
             print(f"Loaded model from: {self.model_path}")
         else:
-            import sys
-
             print("=" * 60, file=sys.stderr)
             print(f"WARNING: Model file not found: {self.model_path}", file=sys.stderr)
             print(
