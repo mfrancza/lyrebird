@@ -22,6 +22,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from lyrebird import FiniteImpulseResponseModel
 from pi.ring_buffer import RingBuffer, BatchRingBuffer
 from pi.audio_io import AudioConfig, AudioIO, print_devices
+from pi.model_sizes import add_size_arguments, resolve_size_arguments, print_size_info
 
 
 class RealtimeProcessor:
@@ -305,25 +306,28 @@ Examples:
   # List audio devices
   python realtime_processor.py --list-devices
 
-  # Run with default settings
-  python realtime_processor.py --model models/small/model.pth
+  # Run with Small model (default, optimized for Raspberry Pi)
+  python realtime_processor.py --model models/big_muff_small.pth --size small
+
+  # Run with Medium model for desktop
+  python realtime_processor.py --model models/big_muff_medium.pth --size medium
 
   # Run with specific audio devices
-  python realtime_processor.py --model model.pth --input-device 2 --output-device 3
+  python realtime_processor.py --model model.pth --size small --input-device 2 --output-device 3
 
-  # Run with larger buffer for more stability
-  python realtime_processor.py --model model.pth --block-size 256
+  # Run with larger audio buffer for more stability
+  python realtime_processor.py --model model.pth --size small --block-size 256
+
+  # Run with manual model parameters (override preset)
+  python realtime_processor.py --model model.pth --buffer-length 128 --hidden-size 64 --num-layers 1
         """
     )
 
     parser.add_argument('--model', type=str, default='model.pth',
                         help='Path to model file (.pth)')
-    parser.add_argument('--buffer-length', type=int, default=128,
-                        help='Model buffer length (must match training)')
-    parser.add_argument('--hidden-size', type=int, default=64,
-                        help='Model hidden size (must match training)')
-    parser.add_argument('--num-layers', type=int, default=1,
-                        help='Model number of layers (must match training)')
+
+    # Add model size arguments (--size or manual --buffer-length etc.)
+    add_size_arguments(parser, default_size='small')
     parser.add_argument('--sample-rate', type=int, default=44100,
                         help='Audio sample rate')
     parser.add_argument('--block-size', type=int, default=128,
@@ -349,15 +353,26 @@ Examples:
         print_devices()
         return
 
+    # Resolve model size arguments
+    buffer_length, hidden_size, num_layers = resolve_size_arguments(args)
+
+    # Print model size info
+    if args.size:
+        print_size_info(size=args.size)
+    else:
+        print_size_info(buffer_length=buffer_length, hidden_size=hidden_size,
+                        num_layers=num_layers)
+    print()
+
     # Select processor class
     ProcessorClass = BatchedRealtimeProcessor if args.batched else RealtimeProcessor
 
     # Create processor
     processor = ProcessorClass(
         model_path=args.model,
-        buffer_length=args.buffer_length,
-        hidden_size=args.hidden_size,
-        num_layers=args.num_layers,
+        buffer_length=buffer_length,
+        hidden_size=hidden_size,
+        num_layers=num_layers,
         sample_rate=args.sample_rate,
         block_size=args.block_size,
         channels=args.channels,

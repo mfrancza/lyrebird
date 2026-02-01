@@ -15,6 +15,7 @@ import torch
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from lyrebird import FiniteImpulseResponseModel
+from pi.model_sizes import add_size_arguments, resolve_size_arguments, print_size_info
 
 
 def export_to_onnx(
@@ -206,14 +207,20 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Export a trained model
-  python export_onnx.py --model model.pth --buffer-length 128 --hidden-size 64
+  # Export a Small model (for Raspberry Pi)
+  python export_onnx.py --model model.pth --size small
+
+  # Export a Medium model
+  python export_onnx.py --model model.pth --size medium
 
   # Export with custom output path
-  python export_onnx.py --model model.pth -o optimized.onnx --buffer-length 128 --hidden-size 64
+  python export_onnx.py --model model.pth --size small -o optimized.onnx
 
   # Export for batched inference
-  python export_onnx.py --model model.pth --batch-size 64 --buffer-length 128 --hidden-size 64
+  python export_onnx.py --model model.pth --size small --batch-size 64
+
+  # Export with manual parameters (override preset)
+  python export_onnx.py --model model.pth --buffer-length 128 --hidden-size 64 --num-layers 2
         """
     )
 
@@ -221,12 +228,10 @@ Examples:
                         help='Path to trained model (.pth)')
     parser.add_argument('--output', '-o', type=str, default=None,
                         help='Output path for ONNX model (default: same as input with .onnx)')
-    parser.add_argument('--buffer-length', type=int, required=True,
-                        help='Model buffer length')
-    parser.add_argument('--hidden-size', type=int, required=True,
-                        help='Model hidden size')
-    parser.add_argument('--num-layers', type=int, default=1,
-                        help='Model number of layers')
+
+    # Add model size arguments (--size or manual --buffer-length etc.)
+    add_size_arguments(parser, default_size=None)
+
     parser.add_argument('--channels', type=int, default=1,
                         help='Number of audio channels')
     parser.add_argument('--batch-size', type=int, default=1,
@@ -238,6 +243,17 @@ Examples:
 
     args = parser.parse_args()
 
+    # Resolve model size arguments
+    buffer_length, hidden_size, num_layers = resolve_size_arguments(args)
+
+    # Print model size info
+    if args.size:
+        print_size_info(size=args.size)
+    else:
+        print_size_info(buffer_length=buffer_length, hidden_size=hidden_size,
+                        num_layers=num_layers)
+    print()
+
     # Determine output path
     output_path = args.output
     if output_path is None:
@@ -247,9 +263,9 @@ Examples:
     export_to_onnx(
         model_path=args.model,
         output_path=output_path,
-        buffer_length=args.buffer_length,
-        hidden_size=args.hidden_size,
-        num_layers=args.num_layers,
+        buffer_length=buffer_length,
+        hidden_size=hidden_size,
+        num_layers=num_layers,
         channels=args.channels,
         batch_size=args.batch_size,
         opset_version=args.opset,

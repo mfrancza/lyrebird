@@ -53,11 +53,17 @@ python realtime_processor.py --list-devices
 ### 4. Run with a Trained Model
 
 ```bash
+# Using model size preset (recommended)
 python realtime_processor.py \
-    --model ../models/small/model.pth \
+    --model ../models/big_muff_small.pth \
+    --size small
+
+# Or with explicit parameters
+python realtime_processor.py \
+    --model ../models/big_muff_small.pth \
     --buffer-length 128 \
-    --hidden-size 64 \
-    --num-layers 1
+    --hidden-size 32 \
+    --num-layers 2
 ```
 
 ## Project Structure
@@ -86,15 +92,27 @@ pi/
 
 ## Performance Tuning
 
-### Model Selection
+### Model Size Presets
 
-From hyperparameter exploration, recommended configurations:
+The following presets match the VST plugin's model variants:
 
 | Name | buffer_length | hidden_size | layers | Params | Use Case |
 |------|---------------|-------------|--------|--------|----------|
-| Tiny | 128 | 32 | 1 | ~4K | Guaranteed real-time |
-| Small | 128 | 64 | 1 | ~8K | Good balance |
-| Medium | 128 | 128 | 1 | ~17K | Best quality |
+| **Small** | 128 | 32 | 2 | ~5K | Raspberry Pi real-time |
+| **Medium** | 256 | 64 | 2 | ~21K | Laptop/Desktop |
+| **Large** | 512 | 128 | 3 | ~99K | High-end systems |
+
+Use the `--size` argument to select a preset:
+
+```bash
+python realtime_processor.py --model ../models/big_muff_small.pth --size small
+python realtime_processor.py --model ../models/big_muff_medium.pth --size medium
+```
+
+**Computational cost comparison** (operations per sample):
+- Small: ~5,184 MACs - suitable for Raspberry Pi 4
+- Medium: ~20,544 MACs - 4x more compute
+- Large: ~98,560 MACs - 19x more compute (desktop only)
 
 ### Kernel Optimization
 
@@ -113,13 +131,13 @@ ONNX Runtime can provide better performance than PyTorch on ARM:
 ```bash
 # Export model to ONNX
 python tools/export_onnx.py \
-    --model ../models/small/model.pth \
-    --buffer-length 128 \
-    --hidden-size 64
+    --model ../models/big_muff_small.pth \
+    --size small
 
 # Run with ONNX
 python realtime_processor.py \
-    --model ../models/small/model.pth \
+    --model ../models/big_muff_small.pth \
+    --size small \
     --use-onnx
 ```
 
@@ -149,13 +167,18 @@ python tests/test_latency.py --test loopback
 Run benchmarks to verify your Pi can handle real-time processing:
 
 ```bash
+# Benchmark Small model (recommended for Pi)
 python tools/benchmark_pi.py \
-    --model ../models/small/model.pth \
-    --buffer-length 128 \
-    --hidden-size 64
+    --model ../models/big_muff_small.pth \
+    --size small
+
+# Benchmark all sizes to compare performance
+python tools/benchmark_pi.py --size small
+python tools/benchmark_pi.py --size medium
+python tools/benchmark_pi.py --size large
 
 # Include thermal stress test
-python tools/benchmark_pi.py --stress-test 60
+python tools/benchmark_pi.py --size small --stress-test 60
 ```
 
 ## Running as a Service
@@ -203,9 +226,10 @@ journalctl -u lyrebird -f
 
 ### Model Loading Issues
 
-1. Ensure model parameters match: `--buffer-length`, `--hidden-size`, `--num-layers`
-2. Verify model file exists and is readable
-3. Check PyTorch version compatibility
+1. Use `--size` to match the model's training configuration (small/medium/large)
+2. If using manual parameters, ensure they match: `--buffer-length`, `--hidden-size`, `--num-layers`
+3. Verify model file exists and is readable
+4. Check PyTorch version compatibility
 
 ## Development
 

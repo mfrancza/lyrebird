@@ -17,6 +17,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from pi.audio_io import AudioConfig, AudioIO, print_devices
+from pi.model_sizes import add_size_arguments, resolve_size_arguments
 
 
 def measure_loopback_latency(
@@ -282,12 +283,10 @@ def main():
                         help='Test duration in seconds')
     parser.add_argument('--model', type=str, default='model.pth',
                         help='Model path (for processor test)')
-    parser.add_argument('--buffer-length', type=int, default=128,
-                        help='Model buffer length')
-    parser.add_argument('--hidden-size', type=int, default=64,
-                        help='Model hidden size')
-    parser.add_argument('--num-layers', type=int, default=1,
-                        help='Model layers')
+
+    # Add model size arguments (--size or manual --buffer-length etc.)
+    add_size_arguments(parser, default_size='small')
+
     parser.add_argument('--list-devices', action='store_true',
                         help='List audio devices')
 
@@ -344,11 +343,14 @@ def main():
                     print(f"  Hint: {details['hint']}")
 
         elif test == 'processor':
+            # Resolve model size arguments
+            buffer_length, hidden_size, num_layers = resolve_size_arguments(args)
+
             results = run_processor_latency_test(
                 args.model,
-                args.buffer_length,
-                args.hidden_size,
-                args.num_layers,
+                buffer_length,
+                hidden_size,
+                num_layers,
                 config,
                 args.duration,
             )

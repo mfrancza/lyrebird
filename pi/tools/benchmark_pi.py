@@ -19,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 import torch
 from lyrebird import FiniteImpulseResponseModel
+from pi.model_sizes import add_size_arguments, resolve_size_arguments, print_size_info
 
 
 def get_cpu_temp() -> Optional[float]:
@@ -239,12 +240,10 @@ def main():
                         help='Path to trained model (.pth)')
     parser.add_argument('--onnx', type=str, default=None,
                         help='Path to ONNX model')
-    parser.add_argument('--buffer-length', type=int, default=128,
-                        help='Model buffer length')
-    parser.add_argument('--hidden-size', type=int, default=64,
-                        help='Model hidden size')
-    parser.add_argument('--num-layers', type=int, default=1,
-                        help='Model number of layers')
+
+    # Add model size arguments (--size or manual --buffer-length etc.)
+    add_size_arguments(parser, default_size='small')
+
     parser.add_argument('--channels', type=int, default=1,
                         help='Number of audio channels')
     parser.add_argument('--batch-sizes', type=str, default='1,64,128',
@@ -261,19 +260,30 @@ def main():
     # Print system info
     print_system_info()
 
+    # Resolve model size arguments
+    buffer_length, hidden_size, num_layers = resolve_size_arguments(args)
+
+    # Print model size info
+    if args.size:
+        print_size_info(size=args.size)
+    else:
+        print_size_info(buffer_length=buffer_length, hidden_size=hidden_size,
+                        num_layers=num_layers)
+    print()
+
     # Calculate budgets
     per_sample_budget = 1e6 / args.sample_rate
     print(f"Real-time budget at {args.sample_rate} Hz: {per_sample_budget:.2f} μs/sample")
     print()
 
     # Create or load model
-    input_size = args.buffer_length * args.channels
+    input_size = buffer_length * args.channels
     output_size = args.channels
 
     model = FiniteImpulseResponseModel(
         input_size=input_size,
-        hidden_size=args.hidden_size,
-        num_layers=args.num_layers,
+        hidden_size=hidden_size,
+        num_layers=num_layers,
         output_size=output_size
     )
 
@@ -296,7 +306,7 @@ def main():
     print(f"{'':>8} {'(μs)':>10} {'(μs)':>10} {'(μs)':>10} {'(μs)':>10} {'':>6}")
 
     for batch_size in batch_sizes:
-        input_tensor = torch.randn(batch_size, args.channels, args.buffer_length)
+        input_tensor = torch.randn(batch_size, args.channels, buffer_length)
         stats = benchmark_model_pytorch(model, input_tensor, args.iterations)
 
         per_sample = stats['mean_us'] / batch_size
@@ -316,7 +326,7 @@ def main():
 
         for batch_size in batch_sizes:
             input_array = np.random.randn(
-                batch_size, args.channels, args.buffer_length
+                batch_size, args.channels, buffer_length
             ).astype(np.float32)
             stats = benchmark_model_onnx(args.onnx, input_array, args.iterations)
 
@@ -337,7 +347,7 @@ def main():
         print(f"Thermal Stress Test ({args.stress_test}s)")
         print("-" * 60)
 
-        input_tensor = torch.randn(1, args.channels, args.buffer_length)
+        input_tensor = torch.randn(1, args.channels, buffer_length)
         results = stress_test(model, input_tensor, args.stress_test)
 
         print(f"Duration: {results['duration_s']}s")
