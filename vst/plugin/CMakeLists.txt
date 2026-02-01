@@ -24,6 +24,15 @@ target_sources(LyrebirdVST
         Source/dsp/RingBuffer.h
         Source/dsp/NeuralFIRModel.cpp
         Source/dsp/NeuralFIRModel.h
+        Source/dsp/ModelInterface.h
+        Source/dsp/ModelFactory.cpp
+        Source/dsp/ModelFactory.h
+        Source/dsp/ModelSmall.cpp
+        Source/dsp/ModelSmall.h
+        Source/dsp/ModelMedium.cpp
+        Source/dsp/ModelMedium.h
+        Source/dsp/ModelLarge.cpp
+        Source/dsp/ModelLarge.h
         Source/utils/ModelLoader.h
 )
 

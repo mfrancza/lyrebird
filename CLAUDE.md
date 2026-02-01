@@ -85,7 +85,18 @@ Constructor parameters:
    gh pr create --title "Your PR title" --body "Description"
    ```
 
-4. **Add reviewers:** `mfrancza` and `copilot`
+4. **Add reviewers:** `mfrancza`
+
+5. **Post PR comments** using the GitHub App (so comments appear from `mfrancza-s-claude-code[bot]`):
+   ```bash
+   TOKEN=$(~/.claude-code/get-token.sh)
+   curl -s -X POST \
+     -H "Authorization: Bearer $TOKEN" \
+     -H "Accept: application/vnd.github+json" \
+     -H "Content-Type: application/json" \
+     https://api.github.com/repos/mfrancza/lyrebird/issues/{PR_NUMBER}/comments \
+     -d '{"body": "Your comment here"}'
+   ```
 
 See `CONTRIBUTING.md` for full details on PR requirements, code style, and testing.
 

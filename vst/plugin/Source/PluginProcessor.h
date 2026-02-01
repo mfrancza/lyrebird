@@ -1,7 +1,8 @@
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
-#include "dsp/NeuralFIRModel.h"
+#include "dsp/ModelInterface.h"
+#include "dsp/ModelFactory.h"
 #include <atomic>
 
 /**
@@ -49,18 +50,29 @@ public:
     juce::String getLastModelError() const;
     bool hasModelSwapPending() const { return modelSwapPending_.load(); }
 
+    // Model size management
+    lyrebird::ModelSize getModelSize() const { return currentModelSize_; }
+    void setModelSize(lyrebird::ModelSize size);
+    int getModelBufferLength() const;
+    int getModelHiddenSize() const;
+    int getModelNumLayers() const;
+
     // Parameters
     juce::AudioParameterFloat* dryWetParam = nullptr;
     juce::AudioParameterBool* bypassParam = nullptr;
+    juce::AudioParameterChoice* modelSizeParam = nullptr;
 
 private:
-    // Active models used by audio thread
-    std::unique_ptr<lyrebird::NeuralFIRModel> neuralModel_;
-    std::unique_ptr<lyrebird::NeuralFIRModel> neuralModelRight_;
+    // Active models used by audio thread (using IModel interface)
+    std::unique_ptr<lyrebird::IModel> neuralModel_;
+    std::unique_ptr<lyrebird::IModel> neuralModelRight_;
 
     // Staging models for thread-safe loading (loaded by UI thread)
-    std::unique_ptr<lyrebird::NeuralFIRModel> stagingModel_;
-    std::unique_ptr<lyrebird::NeuralFIRModel> stagingModelRight_;
+    std::unique_ptr<lyrebird::IModel> stagingModel_;
+    std::unique_ptr<lyrebird::IModel> stagingModelRight_;
+
+    // Current model size
+    lyrebird::ModelSize currentModelSize_ = lyrebird::ModelSize::Large;
 
     // Atomic flag to signal audio thread that new model is ready
     std::atomic<bool> modelSwapPending_{false};

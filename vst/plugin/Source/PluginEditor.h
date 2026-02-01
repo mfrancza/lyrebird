@@ -9,13 +9,15 @@
  *
  * Provides controls for:
  * - Loading neural FIR models
+ * - Model size selection (Small/Medium/Large)
  * - Dry/Wet mix
  * - Bypass toggle
  * - Model information display
  */
 class LyrebirdAudioProcessorEditor : public juce::AudioProcessorEditor,
                                      public juce::Button::Listener,
-                                     public juce::Slider::Listener {
+                                     public juce::Slider::Listener,
+                                     public juce::ComboBox::Listener {
 public:
     explicit LyrebirdAudioProcessorEditor(LyrebirdAudioProcessor&);
     ~LyrebirdAudioProcessorEditor() override;
@@ -25,6 +27,7 @@ public:
 
     void buttonClicked(juce::Button* button) override;
     void sliderValueChanged(juce::Slider* slider) override;
+    void comboBoxChanged(juce::ComboBox* comboBox) override;
 
 private:
     LyrebirdAudioProcessor& audioProcessor;
@@ -36,6 +39,8 @@ private:
     juce::Label dryWetLabel;
     juce::Label modelInfoLabel;
     juce::Label titleLabel;
+    juce::ComboBox modelSizeCombo;
+    juce::Label modelSizeLabel;
 
     // File chooser
     std::unique_ptr<juce::FileChooser> fileChooser;
