@@ -97,8 +97,8 @@ def main():
     else:
         device = torch.device(args.device)
 
-    print(f"Lyrebird Inference Benchmark")
-    print(f"=" * 60)
+    print("Lyrebird Inference Benchmark")
+    print("=" * 60)
     print(f"Device: {device}")
     print(f"Iterations: {args.iterations}")
     print(f"Channels: {args.channels}")

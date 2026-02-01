@@ -83,7 +83,7 @@ def measure_loopback_latency(
         return outdata
 
     # Run test
-    print(f"Measuring loopback latency...")
+    print("Measuring loopback latency...")
     print(f"  Duration: {duration}s")
     print(f"  Sample rate: {sample_rate} Hz")
     print(f"  Block size: {block_size}")

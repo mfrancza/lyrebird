@@ -185,7 +185,7 @@ def optimize_onnx(input_path: str, output_path: str) -> None:
     try:
         import onnx
 
-        print(f"\nApplying ONNX optimizations...")
+        print("\nApplying ONNX optimizations...")
 
         # Load model and run shape inference to enable runtime optimizations
         model = onnx.load(input_path)

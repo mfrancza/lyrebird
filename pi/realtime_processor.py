@@ -205,7 +205,7 @@ class RealtimeProcessor:
 
     def start(self) -> None:
         """Start real-time processing."""
-        print(f"\nStarting real-time processor...")
+        print("\nStarting real-time processor...")
         print(f"  Sample rate: {self.sample_rate} Hz")
         print(f"  Block size: {self.block_size} samples")
         print(f"  Buffer length: {self.buffer_length} samples")

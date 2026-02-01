@@ -157,7 +157,7 @@ def print_size_info(
         print(f"  Hidden size: {preset['hidden_size']}")
         print(f"  Num layers: {preset['num_layers']}")
     else:
-        print(f"Model configuration:")
+        print("Model configuration:")
         print(f"  Buffer length: {buffer_length}")
         print(f"  Hidden size: {hidden_size}")
         print(f"  Num layers: {num_layers}")
