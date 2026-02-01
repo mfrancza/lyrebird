@@ -48,13 +48,11 @@ jobs:
           path: vst/build/plugin/LyrebirdVST_artefacts/Release/Standalone/
           if-no-files-found: warn
 
-      - name: Upload sample models
+      - name: Upload trained models
         uses: actions/upload-artifact@v4
         with:
-          name: Sample-Models
-          path: |
-            big_muff_rtneural.json
-            distortion_rtneural.json
+          name: Trained-Models
+          path: models/*.json
           if-no-files-found: warn
 
   build-linux:
