@@ -139,8 +139,9 @@ jobs:
       - name: Install dependencies
         working-directory: pi
         run: |
-          pip install black ruff pytest
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          pip install black ruff pytest numpy torch --index-url https://download.pytorch.org/whl/cpu
+          # Note: We install minimal deps for testing, not full requirements-pi.txt
+          # (sounddevice requires portaudio which is not needed for unit tests)
 
       - name: Check formatting (black)
         working-directory: pi
