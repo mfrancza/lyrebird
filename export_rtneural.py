@@ -75,17 +75,25 @@ def export_to_rtneural(model_path: str, output_path: str, size: str = None) -> d
     if size:
         size = size.lower()
         if size not in MODEL_SIZE_PRESETS:
-            raise ValueError(f"Unknown size '{size}'. Valid options: {list(MODEL_SIZE_PRESETS.keys())}")
+            raise ValueError(
+                f"Unknown size '{size}'. Valid options: {list(MODEL_SIZE_PRESETS.keys())}"
+            )
 
         preset = MODEL_SIZE_PRESETS[size]
         errors = []
 
         if buffer_length != preset["buffer_length"]:
-            errors.append(f"buffer_length: expected {preset['buffer_length']}, got {buffer_length}")
+            errors.append(
+                f"buffer_length: expected {preset['buffer_length']}, got {buffer_length}"
+            )
         if hidden_size != preset["hidden_size"]:
-            errors.append(f"hidden_size: expected {preset['hidden_size']}, got {hidden_size}")
+            errors.append(
+                f"hidden_size: expected {preset['hidden_size']}, got {hidden_size}"
+            )
         if num_layers != preset["num_layers"]:
-            errors.append(f"num_layers: expected {preset['num_layers']}, got {num_layers}")
+            errors.append(
+                f"num_layers: expected {preset['num_layers']}, got {num_layers}"
+            )
 
         if errors:
             print(f"\nERROR: Model does not match '{size}' preset:")
@@ -105,9 +113,11 @@ def export_to_rtneural(model_path: str, output_path: str, size: str = None) -> d
     # Determine model size name if it matches a preset
     model_size_name = None
     for preset_name, preset in MODEL_SIZE_PRESETS.items():
-        if (buffer_length == preset["buffer_length"] and
-            hidden_size == preset["hidden_size"] and
-            num_layers == preset["num_layers"]):
+        if (
+            buffer_length == preset["buffer_length"]
+            and hidden_size == preset["hidden_size"]
+            and num_layers == preset["num_layers"]
+        ):
             model_size_name = preset_name
             break
 
@@ -198,14 +208,15 @@ Model Size Presets:
 Examples:
   python export_rtneural.py model.pth output.json
   python export_rtneural.py model.pth output.json --size small
-        """
+        """,
     )
     parser.add_argument("model_path", help="Path to the .pth model file")
     parser.add_argument("output_path", help="Path to save the RTNeural JSON file")
     parser.add_argument(
-        "--size", "-s",
+        "--size",
+        "-s",
         choices=["small", "medium", "large"],
-        help="Validate model matches a size preset (small/medium/large)"
+        help="Validate model matches a size preset (small/medium/large)",
     )
 
     args = parser.parse_args()
@@ -221,4 +232,5 @@ Examples:
 
 if __name__ == "__main__":
     import sys
+
     sys.exit(main() or 0)
