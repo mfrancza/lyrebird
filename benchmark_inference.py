@@ -100,19 +100,25 @@ def main():
     print(f"  256-sample block: {budgets['block_256_ms']:.2f} ms")
     print()
 
-    # Model configurations to test
+    # Model configurations to test for exploration/benchmarking.
+    # Note: These are exploration configs and differ from the deployment presets:
+    #   - Deployment presets (pi/model_sizes.py, VST plugin):
+    #     small=128/32/2, medium=256/64/2, large=512/128/3
+    #   - These exploration configs test a wider range for performance analysis
     configs = [
         # (buffer_length, hidden_size, num_layers, description)
         (128, 32, 1, "Tiny"),
-        (128, 32, 2, "Tiny-deep"),
+        (128, 32, 2, "Tiny-deep"),      # Same as deployment "small"
         (128, 64, 1, "Small"),
         (128, 64, 2, "Small-deep"),
         (128, 128, 1, "Medium"),
         (128, 128, 2, "Medium-deep"),
         (256, 64, 1, "Small-wide"),
+        (256, 64, 2, "Small-wide-deep"),  # Same as deployment "medium"
         (256, 128, 1, "Medium-wide"),
         (256, 256, 2, "Large"),
         (512, 128, 2, "Large-wide"),
+        (512, 128, 3, "Large-wide-deep"),  # Same as deployment "large"
         (1024, 256, 4, "XLarge"),
     ]
 
