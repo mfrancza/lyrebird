@@ -1,0 +1,28 @@
+# Lyrebird Raspberry Pi Dependencies
+# Minimal dependencies for real-time audio processing (no CUDA)
+#
+# WARNING: Do NOT install PyTorch on Raspberry Pi via "pip install -r requirements-pi.txt".
+# Instead, run the install.sh script which installs the correct CPU-only wheel for ARM.
+
+# Core ML framework - CPU only
+# For Pi 4 (armv7l/aarch64), install via pip or use PyTorch wheels
+torch>=2.0.0
+
+# Audio file I/O
+torchaudio>=2.0.0
+
+# Real-time audio I/O (ALSA backend)
+sounddevice>=0.4.6
+
+# Audio file writing (optional, for recording)
+soundfile>=0.12.0
+
+# Numerical operations
+numpy>=1.24.0
+
+# ONNX Runtime for optimized inference (optional but recommended)
+# Use onnxruntime instead of onnxruntime-gpu for Pi
+onnxruntime>=1.15.0
+
+# System monitoring (optional)
+psutil>=5.9.0

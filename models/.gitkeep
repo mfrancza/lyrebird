@@ -1,0 +1,17 @@
+# Pre-trained model storage
+# Place trained .pth and .onnx models here
+
+# Model size presets (matching VST plugin):
+#   small:  128/32/2  - Optimized for Raspberry Pi
+#   medium: 256/64/2  - Laptop/Desktop
+#   large:  512/128/3 - High-end systems
+
+# Naming convention:
+#   <effect>_<size>.pth   - PyTorch model
+#   <effect>_<size>.json  - RTNeural export for VST
+#   <effect>_<size>.onnx  - ONNX export for Pi
+#
+# Example:
+#   models/big_muff_small.pth
+#   models/big_muff_small.json
+#   models/big_muff_medium.pth

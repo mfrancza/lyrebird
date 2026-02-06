@@ -1,0 +1,42 @@
+# Raspberry Pi /boot/config.txt additions for Lyrebird
+# Add these lines to your /boot/config.txt
+
+# ============================================================
+# Audio HAT Configuration
+# ============================================================
+# Uncomment ONE of these depending on your audio HAT:
+
+# HiFiBerry DAC+ ADC (~$65) - recommended
+dtoverlay=hifiberry-dacplusadc
+
+# HiFiBerry DAC+ ADC Pro (~$80)
+#dtoverlay=hifiberry-dacplusadcpro
+
+# Raspberry Pi Codec Zero (~$20, wire RCA to AUX pins)
+#dtoverlay=rpi-codec
+
+# ============================================================
+# Performance Settings
+# ============================================================
+
+# Force maximum GPU memory allocation for better audio DMA
+gpu_mem=16
+
+# Disable WiFi power management (reduces latency spikes)
+# Note: Add to /etc/rc.local instead: iwconfig wlan0 power off
+
+# Force CPU to performance governor at boot
+# Note: Also set via /etc/rc.local or systemd service
+
+# ============================================================
+# Optional: Disable unused features to reduce interrupts
+# ============================================================
+
+# Disable Bluetooth (if not needed)
+#dtoverlay=disable-bt
+
+# Disable onboard audio (using HAT instead)
+dtparam=audio=off
+
+# Disable HDMI audio
+#hdmi_ignore_cec_init=1
