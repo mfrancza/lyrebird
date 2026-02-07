@@ -104,8 +104,9 @@ echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     SERVICE_FILE="$SCRIPT_DIR/config/lyrebird.service"
     if [ -f "$SERVICE_FILE" ]; then
-        # Update service file paths (using # as delimiter for paths with special chars)
+        # Update service file paths and user (using # as delimiter for paths with special chars)
         sed -e "s#/home/pi/lyrebird#$PROJECT_DIR#g" \
+            -e "s#^User=pi#User=$USER#" \
             "$SERVICE_FILE" | sudo tee /etc/systemd/system/lyrebird.service > /dev/null
 
         sudo systemctl daemon-reload
