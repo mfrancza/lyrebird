@@ -29,7 +29,7 @@ Real-time audio effects processing using trained Lyrebird neural FIR models on R
 
 ```bash
 cd lyrebird/pi
-sudo ./install.sh
+./install.sh
 ```
 
 ### 2. Configure Audio HAT
