@@ -16,10 +16,10 @@ from typing import Optional
 import numpy as np
 import torch
 
-# Add parent directory to path for imports
+# Add parent directory to path for pi.* imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from lyrebird import FiniteImpulseResponseModel
+from lyrebird_audio import FiniteImpulseResponseModel
 from pi.ring_buffer import RingBuffer, BatchRingBuffer
 from pi.audio_io import AudioConfig, AudioIO, print_devices
 from pi.model_sizes import add_size_arguments, resolve_size_arguments, print_size_info

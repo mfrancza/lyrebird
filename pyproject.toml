@@ -1,0 +1,23 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "lyrebird-audio"
+version = "0.1.0"
+description = "Neural audio effect cloning using FIR-inspired deep learning"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+dependencies = [
+    "torch>=2.8.0",
+    "torchaudio>=2.8.0",
+    "soundfile>=0.13.0",
+]
+
+[project.scripts]
+lyrebird-train = "lyrebird_audio.train:main"
+lyrebird-export = "lyrebird_audio.export_rtneural:main"
+lyrebird-benchmark = "lyrebird_audio.benchmark:main"
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0.0"]
