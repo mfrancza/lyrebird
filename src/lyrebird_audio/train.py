@@ -50,7 +50,7 @@ def train_model(
         tuple: (model, final_loss, training_dataset)
     """
     # Create dataset
-    print(f"\nLoading training data...")
+    print("\nLoading training data...")
     dataset = lyrebird.FiniteImpulseResponseDataSet(
         input_wav_path=input_wav,
         output_wav_path=output_wav,
@@ -82,7 +82,7 @@ def train_model(
     )
     model = model.to(device)
 
-    print(f"\nModel architecture:")
+    print("\nModel architecture:")
     print(f"  Input size: {input_size}")
     print(f"  Hidden size: {hidden_size}")
     print(f"  Num layers: {num_layers}")
@@ -263,7 +263,7 @@ Examples:
         print("\n" + "=" * 60)
         print(f"TRAINING {size_name.upper()} MODEL")
         print("=" * 60)
-        print(f"Configuration:")
+        print("Configuration:")
         print(f"  Buffer length: {preset['buffer_length']}")
         print(f"  Hidden size: {preset['hidden_size']}")
         print(f"  Num layers: {preset['num_layers']}")
@@ -297,7 +297,7 @@ Examples:
             # Export to RTNeural JSON
             if not args.no_export:
                 json_path = output_dir / f"{args.name}_{size_name}.json"
-                print(f"\nExporting to RTNeural format...")
+                print("\nExporting to RTNeural format...")
                 export_to_rtneural(str(pth_path), str(json_path), size=size_name)
 
             results[size_name] = {
@@ -319,13 +319,13 @@ Examples:
     for size_name, result in results.items():
         if result["status"] == "success":
             print(f"\n{size_name.upper()}:")
-            print(f"  Status: SUCCESS")
+            print("  Status: SUCCESS")
             print(f"  Final loss: {result['final_loss']:.6f}")
             print(f"  Parameters: {result['parameters']:,}")
             print(f"  Model: {result['pth_path']}")
         else:
             print(f"\n{size_name.upper()}:")
-            print(f"  Status: FAILED")
+            print("  Status: FAILED")
             print(f"  Error: {result['error']}")
 
     # Check for failures
