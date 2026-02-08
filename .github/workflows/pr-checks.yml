@@ -137,7 +137,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install black ruff pytest numpy
-          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
           # Install lyrebird-audio package (needed by pi tools)
           pip install -e .
           # Note: We install minimal deps for testing, not full requirements-pi.txt

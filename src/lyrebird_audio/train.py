@@ -203,7 +203,11 @@ Examples:
         help="Model sizes to train (default: all)",
     )
     parser.add_argument(
-        "--epochs", "-e", type=int, default=5, help="Number of training epochs (default: 5)"
+        "--epochs",
+        "-e",
+        type=int,
+        default=5,
+        help="Number of training epochs (default: 5)",
     )
     parser.add_argument(
         "--batch-size", "-b", type=int, default=32, help="Batch size (default: 32)"
