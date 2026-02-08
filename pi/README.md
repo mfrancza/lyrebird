@@ -34,7 +34,7 @@ cd lyrebird/pi
 
 ### 2. Configure Audio HAT
 
-Edit `/boot/config.txt` and add your HAT's overlay:
+Edit `/boot/firmware/config.txt` and add your HAT's overlay:
 
 ```
 dtoverlay=hifiberry-dacplusadc
@@ -50,17 +50,30 @@ source ../venv/bin/activate
 python realtime_processor.py --list-devices
 ```
 
-### 4. Run with a Trained Model
+### 4. Export Model for Deployment
+
+Training checkpoints from `train_all_sizes.py` must be exported before use on the Pi:
+
+```bash
+# Export a training checkpoint to a deployment model
+python tools/export_model.py --checkpoint ../models/big_muff_small.pth
+# → ../models/big_muff_small.deploy.pth
+
+# Or specify a custom output path
+python tools/export_model.py --checkpoint ../models/big_muff_small.pth --output ../models/deployed.pth
+```
+
+### 5. Run with an Exported Model
 
 ```bash
 # Using model size preset (recommended)
 python realtime_processor.py \
-    --model ../models/big_muff_small.pth \
+    --model ../models/big_muff_small.deploy.pth \
     --size small
 
 # Or with explicit parameters
 python realtime_processor.py \
-    --model ../models/big_muff_small.pth \
+    --model ../models/big_muff_small.deploy.pth \
     --buffer-length 128 \
     --hidden-size 32 \
     --num-layers 2
@@ -77,12 +90,13 @@ pi/
 ├── install.sh               # Installation script
 │
 ├── config/
-│   ├── config.txt.example   # /boot/config.txt additions
+│   ├── config.txt.example   # /boot/firmware/config.txt additions
 │   ├── cmdline.txt.example  # Kernel parameters
 │   ├── asound.conf.example  # ALSA configuration
 │   └── lyrebird.service     # systemd service
 │
 ├── tools/
+│   ├── export_model.py      # Export training checkpoints to deployment models
 │   ├── export_onnx.py       # Export models to ONNX
 │   └── benchmark_pi.py      # Pi-specific benchmarks
 │
@@ -105,8 +119,8 @@ The following presets match the VST plugin's model variants:
 Use the `--size` argument to select a preset:
 
 ```bash
-python realtime_processor.py --model ../models/big_muff_small.pth --size small
-python realtime_processor.py --model ../models/big_muff_medium.pth --size medium
+python realtime_processor.py --model ../models/big_muff_small.deploy.pth --size small
+python realtime_processor.py --model ../models/big_muff_medium.deploy.pth --size medium
 ```
 
 **Computational cost comparison** (operations per sample):
@@ -129,14 +143,14 @@ This reserves CPU cores 2-3 exclusively for audio processing.
 ONNX Runtime can provide better performance than PyTorch on ARM:
 
 ```bash
-# Export model to ONNX
+# Export model to ONNX (use the deployment model)
 python tools/export_onnx.py \
-    --model ../models/big_muff_small.pth \
+    --model ../models/big_muff_small.deploy.pth \
     --size small
 
 # Run with ONNX
 python realtime_processor.py \
-    --model ../models/big_muff_small.pth \
+    --model ../models/big_muff_small.deploy.pth \
     --size small \
     --use-onnx
 ```
@@ -169,7 +183,7 @@ Run benchmarks to verify your Pi can handle real-time processing:
 ```bash
 # Benchmark Small model (recommended for Pi)
 python tools/benchmark_pi.py \
-    --model ../models/big_muff_small.pth \
+    --model ../models/big_muff_small.deploy.pth \
     --size small
 
 # Benchmark all sizes to compare performance
@@ -206,7 +220,7 @@ journalctl -u lyrebird -f
 ### No Audio Output
 
 1. Check audio device is recognized: `aplay -l`
-2. Verify HAT overlay in `/boot/config.txt`
+2. Verify HAT overlay in `/boot/firmware/config.txt`
 3. Check ALSA mixer settings: `alsamixer`
 4. Test with simple playback: `speaker-test -c 2`
 
