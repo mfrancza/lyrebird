@@ -46,7 +46,7 @@ def export_model(checkpoint_path: str, output_path: str) -> None:
     """
     print(f"Loading checkpoint: {checkpoint_path}")
 
-    checkpoint = torch.load(checkpoint_path, map_location="cpu")
+    checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
 
     if not isinstance(checkpoint, dict) or "model_state_dict" not in checkpoint:
         print(
@@ -55,6 +55,22 @@ def export_model(checkpoint_path: str, output_path: str) -> None:
         )
         print(
             "Expected a dict with 'model_state_dict' key (from train_all_sizes.py).",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    # Validate required metadata keys
+    required_keys = [
+        "input_size",
+        "hidden_size",
+        "num_layers",
+        "output_size",
+        "buffer_length",
+    ]
+    missing_keys = [k for k in required_keys if k not in checkpoint]
+    if missing_keys:
+        print(
+            f"Error: Checkpoint is missing required metadata keys: {missing_keys}",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -89,6 +105,17 @@ def export_model(checkpoint_path: str, output_path: str) -> None:
 
     num_params = sum(p.numel() for p in model.parameters())
     print(f"  Parameters: {num_params:,}")
+
+    # Ensure output directory exists
+    output_dir = Path(output_path).parent
+    try:
+        output_dir.mkdir(parents=True, exist_ok=True)
+    except OSError as e:
+        print(
+            f"Error: Could not create output directory '{output_dir}': {e}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
     # Save raw state dict
     torch.save(state_dict, output_path)

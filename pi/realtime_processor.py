@@ -110,13 +110,21 @@ class RealtimeProcessor:
 
         # Load weights
         if os.path.exists(self.model_path):
-            state_dict = torch.load(self.model_path, map_location=self.device)
+            state_dict = torch.load(
+                self.model_path, map_location=self.device, weights_only=False
+            )
             if isinstance(state_dict, dict) and "model_state_dict" in state_dict:
-                raise RuntimeError(
-                    f"'{self.model_path}' is a training checkpoint, not a deployment model.\n"
-                    "Run the export tool first:\n"
-                    f"  python pi/tools/export_model.py --checkpoint {self.model_path}"
+                print(
+                    f"Error: '{self.model_path}' is a training checkpoint, "
+                    "not a deployment model.",
+                    file=sys.stderr,
                 )
+                print(
+                    "Run the export tool first:\n"
+                    f"  python tools/export_model.py --checkpoint {self.model_path}",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
             self.model.load_state_dict(state_dict)
             print(f"Loaded model from: {self.model_path}")
         else:

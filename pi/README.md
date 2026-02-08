@@ -119,8 +119,8 @@ The following presets match the VST plugin's model variants:
 Use the `--size` argument to select a preset:
 
 ```bash
-python realtime_processor.py --model ../models/big_muff_small.pth --size small
-python realtime_processor.py --model ../models/big_muff_medium.pth --size medium
+python realtime_processor.py --model ../models/big_muff_small.deploy.pth --size small
+python realtime_processor.py --model ../models/big_muff_medium.deploy.pth --size medium
 ```
 
 **Computational cost comparison** (operations per sample):
@@ -183,7 +183,7 @@ Run benchmarks to verify your Pi can handle real-time processing:
 ```bash
 # Benchmark Small model (recommended for Pi)
 python tools/benchmark_pi.py \
-    --model ../models/big_muff_small.pth \
+    --model ../models/big_muff_small.deploy.pth \
     --size small
 
 # Benchmark all sizes to compare performance

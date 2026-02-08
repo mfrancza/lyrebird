@@ -55,13 +55,19 @@ def export_to_onnx(
     )
 
     # Load weights
-    state_dict = torch.load(model_path, map_location="cpu")
+    state_dict = torch.load(model_path, map_location="cpu", weights_only=False)
     if isinstance(state_dict, dict) and "model_state_dict" in state_dict:
-        raise RuntimeError(
-            f"'{model_path}' is a training checkpoint, not a deployment model.\n"
-            "Run the export tool first:\n"
-            f"  python pi/tools/export_model.py --checkpoint {model_path}"
+        print(
+            f"Error: '{model_path}' is a training checkpoint, "
+            "not a deployment model.",
+            file=sys.stderr,
         )
+        print(
+            "Run the export tool first:\n"
+            f"  python tools/export_model.py --checkpoint {model_path}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
     model.load_state_dict(state_dict)
     model.eval()
 
