@@ -101,7 +101,19 @@ def export_model(checkpoint_path: str, output_path: str) -> None:
         num_layers=num_layers,
         output_size=output_size,
     )
-    model.load_state_dict(state_dict)
+    try:
+        model.load_state_dict(state_dict)
+    except RuntimeError as e:
+        print(
+            "Error: Failed to load model state dict.",
+            file=sys.stderr,
+        )
+        print(f"  Details: {e}", file=sys.stderr)
+        print(
+            "Verify that the checkpoint matches the expected model size/preset.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
     num_params = sum(p.numel() for p in model.parameters())
     print(f"  Parameters: {num_params:,}")
