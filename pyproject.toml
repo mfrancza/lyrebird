@@ -11,6 +11,7 @@ license = "Apache-2.0"
 dependencies = [
     "torch>=2.8.0",
     "torchaudio>=2.8.0",
+    "torchcodec>=0.8.0",
     "soundfile>=0.13.0",
 ]
 
@@ -21,3 +22,9 @@ lyrebird-benchmark = "lyrebird_audio.benchmark:main"
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0.0"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/lyrebird_audio/**"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/lyrebird_audio"]

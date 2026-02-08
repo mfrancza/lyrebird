@@ -30,9 +30,10 @@ jobs:
             vst:
               - 'vst/**'
               - '.github/workflows/pr-checks.yml'
-            # Pi runner (planned - directory does not exist yet)
             pi:
               - 'pi/**'
+              - 'src/lyrebird_audio/**'
+              - 'pyproject.toml'
 
   # Python library checks
   python-checks:
