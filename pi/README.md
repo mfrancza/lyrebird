@@ -63,7 +63,7 @@ python tools/export_model.py --checkpoint ../models/big_muff_small.pth
 python tools/export_model.py --checkpoint ../models/big_muff_small.pth --output ../models/deployed.pth
 ```
 
-### 5. Run with a Trained Model
+### 5. Run with an Exported Model
 
 ```bash
 # Using model size preset (recommended)

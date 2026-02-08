@@ -6,9 +6,9 @@ Training checkpoints (from train_all_sizes.py) contain model_state_dict,
 optimizer_state_dict, and metadata. The Pi deployment tools expect raw
 state dicts. This script extracts and validates the state dict for deployment.
 
-Usage:
-    python export_model.py --checkpoint models/big_muff_small.pth
-    python export_model.py --checkpoint models/big_muff_small.pth --output models/deployed.pth
+Usage (from lyrebird/pi):
+    python tools/export_model.py --checkpoint ../models/big_muff_small.pth
+    python tools/export_model.py --checkpoint ../models/big_muff_small.pth --output ../models/deployed.pth
 """
 
 import argparse
@@ -141,10 +141,10 @@ def main():
         epilog="""
 Examples:
   # Export with default naming (<name>.pth -> <name>.deploy.pth)
-  python export_model.py --checkpoint models/big_muff_small.pth
+  python tools/export_model.py --checkpoint ../models/big_muff_small.pth
 
   # Export with custom output path
-  python export_model.py --checkpoint models/big_muff_small.pth --output models/deployed.pth
+  python tools/export_model.py --checkpoint ../models/big_muff_small.pth --output ../models/deployed.pth
         """,
     )
 
