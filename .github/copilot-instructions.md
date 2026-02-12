@@ -162,18 +162,11 @@ pyproject.toml            # Build config (hatchling), dependencies, entry points
 
 ### Tests fail with `RuntimeError: Could not load libtorchcodec`
 **Cause:** FFmpeg system libraries are not installed. The `torchaudio` and `torchcodec` packages require FFmpeg runtime libraries.
-**Fix:**
-```bash
-sudo apt-get install -y ffmpeg libavutil-dev libavcodec-dev libavformat-dev libswresample-dev
-```
-The CI workflow (`pr-checks.yml`) installs these in the `Install FFmpeg libraries` step.
+**Fix:** Install FFmpeg libraries as shown in the [Environment Setup](#python-library-primary) section. The CI workflow (`pr-checks.yml`) installs these in the `Install FFmpeg libraries` step.
 
 ### `black` or `ruff` not found
 **Cause:** These are not included in the `[dev]` optional dependencies in `pyproject.toml` — they must be installed separately.
-**Fix:**
-```bash
-pip install black ruff
-```
+**Fix:** Run `pip install black ruff` as shown in the [Environment Setup](#python-library-primary) section.
 
 ### VST build fails with missing headers
 **Cause:** Git submodules (JUCE, RTNeural) not initialized.
