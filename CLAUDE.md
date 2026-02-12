@@ -20,12 +20,24 @@ pytest tests/ -v
 
 **Run a single test:**
 ```bash
-pytest tests/test_lyrebird.py::TestFiniteImpulseResponseModel::test_forward_pass -v
+pytest tests/test_lyrebird.py::TestFiniteImpulseResponseModel::test_model_forward_batch -v
+```
+
+**Run Pi tests:**
+```bash
+cd pi && pytest tests/ -v
 ```
 
 **Launch Jupyter notebooks:**
 ```bash
 jupyter notebook notebooks/
+```
+
+**CLI tools** (installed via `pip install -e ".[dev]"`):
+```bash
+lyrebird-train --input data/clean.wav --output data/processed.wav --name my_effect
+lyrebird-export models/my_effect.pth models/my_effect.json
+lyrebird-benchmark models/my_effect.pth
 ```
 
 ## Architecture
@@ -114,9 +126,3 @@ pi/                # Raspberry Pi deployment
    **IMPORTANT:** Always use this GitHub App token instead of `gh` CLI for any GitHub API calls that create attributable content (comments, reviews, reactions). Use `gh` CLI only for operations like creating PRs, merging, or reading data.
 
 See `CONTRIBUTING.md` for full details on PR requirements, code style, and testing.
-
-## Project Components
-
-- **Python library** (`src/lyrebird_audio/`): Training framework (published as `lyrebird-audio`)
-- **VST plugin** (`vst/`): Real-time audio plugin using RTNeural
-- **Pi runner** (`pi/`): Raspberry Pi deployment
