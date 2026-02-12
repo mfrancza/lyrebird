@@ -224,7 +224,7 @@ class TestExportModelWithRealModel(unittest.TestCase):
 
     def test_export_big_muff_model(self):
         """Test exporting the Big Muff model if it exists."""
-        model_path = Path(__file__).parent.parent.parent / "big_muff_fir_model.pth"
+        model_path = Path(__file__).parent.parent.parent / "models" / "big_muff_fir_model.pth"
 
         if not model_path.exists():
             self.skipTest("big_muff_fir_model.pth not found")
