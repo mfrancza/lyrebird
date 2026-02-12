@@ -52,7 +52,7 @@ pip-compile requirements.in
 After activating the virtual environment and installing dependencies:
 
 ```bash
-jupyter notebook
+jupyter notebook notebooks/
 ```
 
-This will open Jupyter in your browser, where you can access `notebook.ipynb`.
+This will open Jupyter in your browser, where you can access the training notebooks in `notebooks/`.

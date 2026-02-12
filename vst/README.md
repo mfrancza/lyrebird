@@ -121,7 +121,7 @@ Convert trained PyTorch models to the RTNeural JSON format:
 
 ```bash
 cd lyrebird/vst/python
-python export_model.py ../big_muff_fir_model.pth big_muff.json \
+python export_model.py ../../models/big_muff_fir_model.pth big_muff.json \
     --buffer_length 512 \
     --hidden_size 128 \
     --num_layers 3

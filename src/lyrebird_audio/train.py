@@ -166,8 +166,8 @@ def main():
 Examples:
   # Train all sizes for Big Muff effect
   lyrebird-train \\
-      --input "Big Muff piano clean.wav" \\
-      --output "Big Muff piano distorted.wav" \\
+      --input "data/Big Muff piano clean.wav" \\
+      --output "data/Big Muff piano distorted.wav" \\
       --name big_muff
 
   # Train only small and medium sizes with more epochs

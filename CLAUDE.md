@@ -25,7 +25,7 @@ pytest tests/test_lyrebird.py::TestFiniteImpulseResponseModel::test_forward_pass
 
 **Launch Jupyter notebooks:**
 ```bash
-jupyter notebook
+jupyter notebook notebooks/
 ```
 
 ## Architecture
@@ -61,11 +61,24 @@ Constructor parameters:
 - **MSE loss**: Standard for audio regression
 - **Device-agnostic**: CPU/CUDA support via `device` parameter
 
+## Project Layout
+
+```
+data/              # Training audio pairs (input + processed WAV files)
+outputs/           # Transformed audio outputs from notebooks
+models/            # Trained model files (.pth, .json)
+notebooks/         # Jupyter notebooks for training and exploration
+src/lyrebird_audio/ # Python library source
+tests/             # Python tests
+vst/               # C++ VST3 plugin
+pi/                # Raspberry Pi deployment
+```
+
 ## Notebooks
 
-- `fir_demo.ipynb`: Main training demonstration with piano distortion
-- `big_muff_demo.ipynb`: Real guitar effect (Big Muff pedal) cloning
-- `hyperparameter_exploration.ipynb`: Parameter tuning experiments
+- `notebooks/fir_demo.ipynb`: Main training demonstration with piano distortion
+- `notebooks/big_muff_demo.ipynb`: Real guitar effect (Big Muff pedal) cloning
+- `notebooks/hyperparameter_exploration.ipynb`: Parameter tuning experiments
 
 ## Development Workflow
 
