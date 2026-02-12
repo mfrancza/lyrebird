@@ -14,11 +14,12 @@ from pathlib import Path
 from typing import Optional, Dict, Any, List
 import numpy as np
 
-# Add parent directories to path
+import torch
+
+# Add parent directories to path for pi.* imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-import torch
-from lyrebird import FiniteImpulseResponseModel
+from lyrebird_audio import FiniteImpulseResponseModel
 from pi.model_sizes import add_size_arguments, resolve_size_arguments, print_size_info
 
 

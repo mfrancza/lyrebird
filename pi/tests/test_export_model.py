@@ -9,7 +9,7 @@ import torch
 # Add parent directories to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from lyrebird import FiniteImpulseResponseModel
+from lyrebird_audio import FiniteImpulseResponseModel
 from pi.tools.export_model import export_model, find_size_preset
 
 

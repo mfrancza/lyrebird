@@ -23,18 +23,17 @@ jobs:
         with:
           filters: |
             python:
-              - 'lyrebird.py'
-              - 'test_lyrebird.py'
-              - 'requirements*.txt'
-              - 'requirements*.in'
-              - 'export_rtneural.py'
+              - 'src/lyrebird_audio/**'
+              - 'tests/**'
+              - 'pyproject.toml'
               - '.github/workflows/pr-checks.yml'
             vst:
               - 'vst/**'
               - '.github/workflows/pr-checks.yml'
-            # Pi runner (planned - directory does not exist yet)
             pi:
               - 'pi/**'
+              - 'src/lyrebird_audio/**'
+              - 'pyproject.toml'
 
   # Python library checks
   python-checks:
@@ -58,17 +57,17 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -r requirements.txt
-          pip install black ruff pytest
+          pip install -e ".[dev]"
+          pip install black ruff
 
       - name: Check formatting (black)
-        run: black --check lyrebird.py test_lyrebird.py export_rtneural.py
+        run: black --check src/lyrebird_audio/ tests/
 
       - name: Lint (ruff)
-        run: ruff check lyrebird.py test_lyrebird.py export_rtneural.py
+        run: ruff check src/lyrebird_audio/ tests/
 
       - name: Run tests (pytest)
-        run: pytest test_lyrebird.py -v
+        run: pytest tests/ -v
 
   # VST plugin checks
   vst-checks:
@@ -137,10 +136,11 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        working-directory: pi
         run: |
           pip install black ruff pytest numpy
-          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
+          # Install lyrebird-audio package (needed by pi tools)
+          pip install -e .
           # Note: We install minimal deps for testing, not full requirements-pi.txt
           # (sounddevice requires portaudio which is not needed for unit tests)
 
@@ -170,7 +170,7 @@ jobs:
           if [ -d tests ]; then
             # Run only tests that don't require audio hardware
             # test_latency.py requires sounddevice/portaudio (hardware)
-            pytest tests/test_ring_buffer.py tests/test_model_sizes.py -v
+            pytest tests/test_ring_buffer.py tests/test_model_sizes.py tests/test_export_model.py -v
           else
             echo "No tests directory found"
           fi

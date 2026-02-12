@@ -8,19 +8,19 @@ Lyrebird is a neural audio effect cloning framework using PyTorch. It trains fee
 
 ## Commands
 
+**Install for development:**
+```bash
+pip install -e ".[dev]"
+```
+
 **Run tests:**
 ```bash
-pytest test_lyrebird.py -v
+pytest tests/ -v
 ```
 
 **Run a single test:**
 ```bash
-pytest test_lyrebird.py::TestFiniteImpulseResponseModel::test_forward_pass -v
-```
-
-**Update dependencies (after editing requirements.in):**
-```bash
-pip-compile requirements.in
+pytest tests/test_lyrebird.py::TestFiniteImpulseResponseModel::test_forward_pass -v
 ```
 
 **Launch Jupyter notebooks:**
@@ -30,7 +30,7 @@ jupyter notebook
 
 ## Architecture
 
-The core module (`lyrebird.py`) has three main components:
+The core module (`src/lyrebird_audio/core.py`) has three main components:
 
 ### FiniteImpulseResponseDataSet
 PyTorch Dataset that loads paired WAV files (clean input + processed output). Returns `(input_buffer, output_sample)` tuples where:
@@ -104,6 +104,6 @@ See `CONTRIBUTING.md` for full details on PR requirements, code style, and testi
 
 ## Project Components
 
-- **Python library** (`lyrebird.py`): Training framework
+- **Python library** (`src/lyrebird_audio/`): Training framework (published as `lyrebird-audio`)
 - **VST plugin** (`vst/`): Real-time audio plugin using RTNeural
 - **Pi runner** (`pi/`): Raspberry Pi deployment

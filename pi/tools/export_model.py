@@ -17,10 +17,10 @@ from pathlib import Path
 
 import torch
 
-# Add parent directories to path
+# Add parent directories to path for pi.* imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from lyrebird import FiniteImpulseResponseModel
+from lyrebird_audio import FiniteImpulseResponseModel
 from pi.model_sizes import MODEL_SIZE_PRESETS
 
 
