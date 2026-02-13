@@ -37,7 +37,7 @@ jupyter notebook notebooks/
 ```bash
 lyrebird-train --input data/clean.wav --output data/processed.wav --name my_effect
 lyrebird-export models/my_effect.pth models/my_effect.json
-lyrebird-benchmark models/my_effect.pth
+lyrebird-benchmark --device cpu --iterations 1000
 ```
 
 ## Architecture
