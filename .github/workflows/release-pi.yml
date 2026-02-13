@@ -82,17 +82,13 @@ jobs:
   package:
     needs: test
     runs-on: ubuntu-latest
-    outputs:
-      tarball-name: ${{ steps.tarball.outputs.name }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Create tarball
-        id: tarball
         run: |
           VERSION="${GITHUB_REF_NAME#pi-v}"
           TARBALL_NAME="lyrebird-pi-${VERSION}.tar.gz"
-          echo "name=$TARBALL_NAME" >> "$GITHUB_OUTPUT"
           tar -czf "$TARBALL_NAME" \
             pi/ \
             src/ \
