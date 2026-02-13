@@ -7,7 +7,7 @@ name = "lyrebird-audio"
 version = "0.1.0"
 description = "Neural audio effect cloning using FIR-inspired deep learning"
 requires-python = ">=3.10"
-license = "Apache-2.0"
+license = "MIT"
 dependencies = [
     "torch>=2.8.0",
     "torchaudio>=2.8.0",
