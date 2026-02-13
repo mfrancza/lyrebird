@@ -112,17 +112,4 @@ pi/                # Raspberry Pi deployment
 
 4. **Add reviewers:** `mfrancza`
 
-5. **Use GitHub App identity** for ALL GitHub API interactions (comments, reviews, reactions, etc.) so they appear from `mfrancza-s-claude-code[bot]`:
-   ```bash
-   TOKEN=$(~/.claude-code/get-token.sh)
-   curl -s -X POST \
-     -H "Authorization: Bearer $TOKEN" \
-     -H "Accept: application/vnd.github+json" \
-     -H "Content-Type: application/json" \
-     https://api.github.com/repos/mfrancza/lyrebird/issues/{PR_NUMBER}/comments \
-     -d '{"body": "Your comment here"}'
-   ```
-
-   **IMPORTANT:** Always use this GitHub App token instead of `gh` CLI for any GitHub API calls that create attributable content (comments, reviews, reactions). Use `gh` CLI only for operations like creating PRs, merging, or reading data.
-
 See `CONTRIBUTING.md` for full details on PR requirements, code style, and testing.
