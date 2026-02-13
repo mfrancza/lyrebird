@@ -325,10 +325,10 @@ Examples:
   python realtime_processor.py --list-devices
 
   # Run with Small model (default, optimized for Raspberry Pi)
-  python realtime_processor.py --model models/big_muff_small.pth --size small
+  python realtime_processor.py --model models/russian_fuzz_small.pth --size small
 
   # Run with Medium model for desktop
-  python realtime_processor.py --model models/big_muff_medium.pth --size medium
+  python realtime_processor.py --model models/russian_fuzz_medium.pth --size medium
 
   # Run with specific audio devices
   python realtime_processor.py --model model.pth --size small --input-device 2 --output-device 3

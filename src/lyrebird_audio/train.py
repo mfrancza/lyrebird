@@ -4,8 +4,8 @@ Train Lyrebird models in all size presets (Small, Medium, Large).
 
 Usage:
     lyrebird-train --input clean.wav --output processed.wav --name effect_name
-    lyrebird-train --input clean.wav --output processed.wav --name big_muff --epochs 10
-    lyrebird-train --input clean.wav --output processed.wav --name big_muff --sizes small medium
+    lyrebird-train --input clean.wav --output processed.wav --name russian_fuzz --epochs 10
+    lyrebird-train --input clean.wav --output processed.wav --name russian_fuzz --sizes small medium
 
 Model Size Presets:
     small:  buffer_length=128, hidden_size=32,  num_layers=2  (~5K params, Raspberry Pi)
@@ -164,11 +164,11 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Train all sizes for Big Muff effect
+  # Train all sizes for Russian Fuzz effect
   lyrebird-train \\
-      --input "data/Big Muff piano clean.wav" \\
-      --output "data/Big Muff piano distorted.wav" \\
-      --name big_muff
+      --input "data/Russian Fuzz piano clean.wav" \\
+      --output "data/Russian Fuzz piano distorted.wav" \\
+      --name russian_fuzz
 
   # Train only small and medium sizes with more epochs
   lyrebird-train \\

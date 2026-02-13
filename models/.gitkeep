@@ -12,6 +12,6 @@
 #   <effect>_<size>.onnx  - ONNX export for Pi
 #
 # Example:
-#   models/big_muff_small.pth
-#   models/big_muff_small.json
-#   models/big_muff_medium.pth
+#   models/russian_fuzz_small.pth
+#   models/russian_fuzz_small.json
+#   models/russian_fuzz_medium.pth

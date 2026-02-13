@@ -89,7 +89,7 @@ pi/                # Raspberry Pi deployment
 ## Notebooks
 
 - `notebooks/fir_demo.ipynb`: Main training demonstration with piano distortion
-- `notebooks/big_muff_demo.ipynb`: Real guitar effect (Big Muff pedal) cloning
+- `notebooks/russian_fuzz_demo.ipynb`: Real guitar effect (Russian Fuzz pedal) cloning
 - `notebooks/hyperparameter_exploration.ipynb`: Parameter tuning experiments
 
 ## Development Workflow
