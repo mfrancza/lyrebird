@@ -222,18 +222,18 @@ class TestExportModel(unittest.TestCase):
 class TestExportModelWithRealModel(unittest.TestCase):
     """Tests using real trained models if available."""
 
-    def test_export_big_muff_model(self):
-        """Test exporting the Big Muff model if it exists."""
-        model_path = Path(__file__).parent.parent.parent / "models" / "big_muff_fir_model.pth"
+    def test_export_russian_fuzz_model(self):
+        """Test exporting the Russian Fuzz model if it exists."""
+        model_path = Path(__file__).parent.parent.parent / "models" / "russian_fuzz_fir_model.pth"
 
         if not model_path.exists():
-            self.skipTest("big_muff_fir_model.pth not found")
+            self.skipTest("russian_fuzz_fir_model.pth not found")
 
         with tempfile.NamedTemporaryFile(suffix='.json', delete=False) as f:
             json_path = f.name
 
         try:
-            # These are the expected parameters for the big muff model
+            # These are the expected parameters for the russian fuzz model
             # Adjust if the actual model has different parameters
             export_model(
                 model_path=str(model_path),

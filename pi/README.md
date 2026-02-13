@@ -56,11 +56,11 @@ Training checkpoints from `train_all_sizes.py` must be exported before use on th
 
 ```bash
 # Export a training checkpoint to a deployment model
-python tools/export_model.py --checkpoint ../models/big_muff_small.pth
-# → ../models/big_muff_small.deploy.pth
+python tools/export_model.py --checkpoint ../models/russian_fuzz_small.pth
+# → ../models/russian_fuzz_small.deploy.pth
 
 # Or specify a custom output path
-python tools/export_model.py --checkpoint ../models/big_muff_small.pth --output ../models/deployed.pth
+python tools/export_model.py --checkpoint ../models/russian_fuzz_small.pth --output ../models/deployed.pth
 ```
 
 ### 5. Run with an Exported Model
@@ -68,12 +68,12 @@ python tools/export_model.py --checkpoint ../models/big_muff_small.pth --output 
 ```bash
 # Using model size preset (recommended)
 python realtime_processor.py \
-    --model ../models/big_muff_small.deploy.pth \
+    --model ../models/russian_fuzz_small.deploy.pth \
     --size small
 
 # Or with explicit parameters
 python realtime_processor.py \
-    --model ../models/big_muff_small.deploy.pth \
+    --model ../models/russian_fuzz_small.deploy.pth \
     --buffer-length 128 \
     --hidden-size 32 \
     --num-layers 2
@@ -119,8 +119,8 @@ The following presets match the VST plugin's model variants:
 Use the `--size` argument to select a preset:
 
 ```bash
-python realtime_processor.py --model ../models/big_muff_small.deploy.pth --size small
-python realtime_processor.py --model ../models/big_muff_medium.deploy.pth --size medium
+python realtime_processor.py --model ../models/russian_fuzz_small.deploy.pth --size small
+python realtime_processor.py --model ../models/russian_fuzz_medium.deploy.pth --size medium
 ```
 
 **Computational cost comparison** (operations per sample):
@@ -145,12 +145,12 @@ ONNX Runtime can provide better performance than PyTorch on ARM:
 ```bash
 # Export model to ONNX (use the deployment model)
 python tools/export_onnx.py \
-    --model ../models/big_muff_small.deploy.pth \
+    --model ../models/russian_fuzz_small.deploy.pth \
     --size small
 
 # Run with ONNX
 python realtime_processor.py \
-    --model ../models/big_muff_small.deploy.pth \
+    --model ../models/russian_fuzz_small.deploy.pth \
     --size small \
     --use-onnx
 ```
@@ -183,7 +183,7 @@ Run benchmarks to verify your Pi can handle real-time processing:
 ```bash
 # Benchmark Small model (recommended for Pi)
 python tools/benchmark_pi.py \
-    --model ../models/big_muff_small.deploy.pth \
+    --model ../models/russian_fuzz_small.deploy.pth \
     --size small
 
 # Benchmark all sizes to compare performance
