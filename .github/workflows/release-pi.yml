@@ -1,0 +1,126 @@
+name: Release Pi App
+
+on:
+  push:
+    tags:
+      - 'pi-v*'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.extract.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: extract
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#pi-v}"
+          echo "version=$TAG_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Validate version matches pi/VERSION
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#pi-v}"
+          FILE_VERSION=$(cat pi/VERSION | tr -d '[:space:]')
+          echo "Tag version: $TAG_VERSION"
+          echo "pi/VERSION: $FILE_VERSION"
+          if [ "$TAG_VERSION" != "$FILE_VERSION" ]; then
+            echo "::error::Tag version ($TAG_VERSION) does not match pi/VERSION ($FILE_VERSION)"
+            exit 1
+          fi
+
+  test:
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install black ruff pytest numpy
+          pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
+          pip install -e .
+
+      - name: Check formatting (black)
+        working-directory: pi
+        run: |
+          files=$(find . -name "*.py" -type f)
+          if [ -n "$files" ]; then
+            echo "$files" | xargs black --check
+          else
+            echo "No Python files to check"
+          fi
+
+      - name: Lint (ruff)
+        working-directory: pi
+        run: |
+          files=$(find . -name "*.py" -type f)
+          if [ -n "$files" ]; then
+            echo "$files" | xargs ruff check
+          else
+            echo "No Python files to lint"
+          fi
+
+      - name: Run tests (pytest)
+        working-directory: pi
+        run: |
+          if [ -d tests ]; then
+            pytest tests/test_ring_buffer.py tests/test_model_sizes.py tests/test_export_model.py -v
+          else
+            echo "No tests directory found"
+          fi
+
+  package:
+    needs: test
+    runs-on: ubuntu-latest
+    outputs:
+      tarball-name: ${{ steps.tarball.outputs.name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create tarball
+        id: tarball
+        run: |
+          VERSION="${GITHUB_REF_NAME#pi-v}"
+          TARBALL_NAME="lyrebird-pi-${VERSION}.tar.gz"
+          echo "name=$TARBALL_NAME" >> "$GITHUB_OUTPUT"
+          tar -czf "$TARBALL_NAME" \
+            pi/ \
+            src/ \
+            pyproject.toml \
+            LICENSE
+
+      - name: Upload tarball artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pi-tarball
+          path: "*.tar.gz"
+          if-no-files-found: error
+
+  release:
+    needs: [validate, package]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download tarball artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: pi-tarball
+          path: dist/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Pi v${{ needs.validate.outputs.version }}"
+          generate_release_notes: true
+          files: dist/*.tar.gz
