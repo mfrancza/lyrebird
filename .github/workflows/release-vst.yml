@@ -1,0 +1,227 @@
+name: Release VST Plugin
+
+on:
+  push:
+    tags:
+      - 'vst-v*'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.extract.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: extract
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#vst-v}"
+          echo "version=$TAG_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Validate version matches CMakeLists.txt
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#vst-v}"
+          CMAKE_VERSION=$(grep -oP 'project\(LyrebirdVST VERSION \K[0-9.]+' vst/CMakeLists.txt)
+          echo "Tag version: $TAG_VERSION"
+          echo "CMakeLists.txt version: $CMAKE_VERSION"
+          if [ "$TAG_VERSION" != "$CMAKE_VERSION" ]; then
+            echo "::error::Tag version ($TAG_VERSION) does not match CMakeLists.txt version ($CMAKE_VERSION)"
+            exit 1
+          fi
+
+  build-windows:
+    needs: validate
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup MSVC
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Configure CMake
+        working-directory: vst
+        run: cmake -B build -G "Visual Studio 17 2022" -A x64 -DJUCE_COPY_PLUGIN_AFTER_BUILD=OFF
+
+      - name: Build
+        working-directory: vst
+        run: cmake --build build --config Release
+
+      - name: Upload VST3 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LyrebirdVST-Windows-VST3
+          path: vst/build/plugin/LyrebirdVST_artefacts/Release/VST3/
+          if-no-files-found: error
+
+      - name: Upload Standalone artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LyrebirdVST-Windows-Standalone
+          path: vst/build/plugin/LyrebirdVST_artefacts/Release/Standalone/
+          if-no-files-found: warn
+
+  build-linux:
+    needs: validate
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libasound2-dev \
+            libjack-jackd2-dev \
+            ladspa-sdk \
+            libcurl4-openssl-dev \
+            libfreetype6-dev \
+            libx11-dev \
+            libxcomposite-dev \
+            libxcursor-dev \
+            libxext-dev \
+            libxinerama-dev \
+            libxrandr-dev \
+            libxrender-dev \
+            libwebkit2gtk-4.0-dev \
+            libglu1-mesa-dev \
+            mesa-common-dev
+
+      - name: Configure CMake
+        working-directory: vst
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DJUCE_COPY_PLUGIN_AFTER_BUILD=OFF
+
+      - name: Build
+        working-directory: vst
+        run: cmake --build build --config Release -j$(nproc)
+
+      - name: Upload VST3 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LyrebirdVST-Linux-VST3
+          path: vst/build/plugin/LyrebirdVST_artefacts/Release/VST3/
+          if-no-files-found: error
+
+      - name: Upload Standalone artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LyrebirdVST-Linux-Standalone
+          path: vst/build/plugin/LyrebirdVST_artefacts/Release/Standalone/
+          if-no-files-found: warn
+
+  build-macos:
+    needs: validate
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Configure CMake
+        working-directory: vst
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DJUCE_COPY_PLUGIN_AFTER_BUILD=OFF
+
+      - name: Build
+        working-directory: vst
+        run: cmake --build build --config Release -j$(sysctl -n hw.ncpu)
+
+      - name: Upload VST3 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LyrebirdVST-macOS-VST3
+          path: vst/build/plugin/LyrebirdVST_artefacts/Release/VST3/
+          if-no-files-found: error
+
+      - name: Upload Standalone artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LyrebirdVST-macOS-Standalone
+          path: vst/build/plugin/LyrebirdVST_artefacts/Release/Standalone/
+          if-no-files-found: warn
+
+  test-linux:
+    needs: validate
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libasound2-dev \
+            libjack-jackd2-dev \
+            ladspa-sdk \
+            libcurl4-openssl-dev \
+            libfreetype6-dev \
+            libx11-dev \
+            libxcomposite-dev \
+            libxcursor-dev \
+            libxext-dev \
+            libxinerama-dev \
+            libxrandr-dev \
+            libxrender-dev \
+            libwebkit2gtk-4.0-dev \
+            libglu1-mesa-dev \
+            mesa-common-dev
+
+      - name: Install Python for test model generation
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Generate test model
+        working-directory: vst/test
+        run: |
+          pip install numpy
+          python generate_test_model.py
+
+      - name: Configure CMake with tests
+        working-directory: vst
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON -DJUCE_COPY_PLUGIN_AFTER_BUILD=OFF
+
+      - name: Build
+        working-directory: vst
+        run: cmake --build build --config Release -j$(nproc)
+
+      - name: Run tests
+        working-directory: vst/build
+        run: ctest --output-on-failure -E rtneural_test_functional
+
+  release:
+    needs: [validate, build-windows, build-linux, build-macos, test-linux]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: Zip artifacts
+        run: |
+          cd artifacts
+          for dir in LyrebirdVST-*; do
+            zip -r "../${dir}.zip" "$dir"
+          done
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "VST v${{ needs.validate.outputs.version }}"
+          generate_release_notes: true
+          files: LyrebirdVST-*.zip
