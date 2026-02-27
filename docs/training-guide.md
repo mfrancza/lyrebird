@@ -151,6 +151,6 @@ lyrebird-train --input "my dry file.wav" --output "my wet file.wav" --name my_ef
 - Checking that your dry and wet files are properly time-aligned
 - Making sure your audio contains enough variety (not just silence or a single sustained note)
 
-**The model doesn't sound right.** Some effects are harder to clone than others. Lyrebird works best with **static, memoryless effects** like distortion, overdrive, EQ, and compression. Effects with feedback or decay — like reverb, delay, and chorus — cannot be accurately modeled with this architecture.
+**The model doesn't sound right.** Some effects are harder to clone than others. Lyrebird works best with **static, memoryless effects** like distortion, overdrive, and EQ. Effects with feedback or decay — like reverb, delay, and chorus — cannot be accurately modeled with this architecture.
 
 **Out of memory errors.** Reduce the batch size with `--batch-size 16` or `--batch-size 8`. If still running out of memory, try training only the `small` size.
