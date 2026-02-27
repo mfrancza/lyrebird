@@ -143,6 +143,17 @@ class RealtimeProcessor:
         num_params = sum(p.numel() for p in self.model.parameters())
         print(f"Model parameters: {num_params:,}")
 
+        # JIT-trace model for faster inference (skip if ONNX is requested)
+        if not self.use_onnx:
+            try:
+                dummy_input = torch.zeros(
+                    1, self.channels, self.buffer_length, device=self.device
+                )
+                self.model = torch.jit.trace(self.model, dummy_input)
+                print("JIT traced model for optimized inference")
+            except Exception as e:
+                print(f"JIT tracing failed, using eager mode: {e}")
+
         # Load ONNX if requested
         if self.use_onnx:
             self._load_onnx()
@@ -192,26 +203,24 @@ class RealtimeProcessor:
 
         # Process sample by sample
         # Note: For better efficiency, consider batched processing
-        for i in range(self.block_size):
-            # Get input sample and add to ring buffer
-            sample = indata[i]  # Shape: (channels,)
-            self.ring_buffer.push(sample)
-
-            # Get buffer as tensor and run inference
-            input_tensor = self.ring_buffer.get_tensor(self.device)
-
-            if self._onnx_session is not None:
-                # ONNX inference
+        if self._onnx_session is not None:
+            for i in range(self.block_size):
+                sample = indata[i]  # Shape: (channels,)
+                self.ring_buffer.push(sample)
+                input_tensor = self.ring_buffer.get_tensor(self.device)
                 ort_inputs = {
                     self._onnx_session.get_inputs()[0].name: input_tensor.cpu().numpy()
                 }
                 output = self._onnx_session.run(None, ort_inputs)[0]
                 self._output_buffer[i] = output[0]
-            else:
-                # PyTorch inference
-                with torch.no_grad():
+        else:
+            with torch.inference_mode():
+                for i in range(self.block_size):
+                    sample = indata[i]  # Shape: (channels,)
+                    self.ring_buffer.push(sample)
+                    input_tensor = self.ring_buffer.get_tensor(self.device)
                     output = self.model(input_tensor)
-                self._output_buffer[i] = output.cpu().numpy()[0]
+                    self._output_buffer[i] = output.cpu().numpy()[0]
 
         return self._output_buffer
 
@@ -286,15 +295,16 @@ class BatchedRealtimeProcessor(RealtimeProcessor):
         for i in range(self.buffer_length + self.block_size):
             self.batch_buffer.push(zeros[:, i])
 
+        # Pre-allocated output tensor sharing memory with numpy output buffer
+        self._output_tensor = torch.from_numpy(self._output_buffer)
+
     def _process_block(self, indata: np.ndarray) -> np.ndarray:
         """Process a block using batched inference."""
         if self.bypass:
             return indata
 
-        # Push all input samples to batch buffer
-        # Note: We process as a batch after all samples are pushed
-        for i in range(self.block_size):
-            self.batch_buffer.push(indata[i])
+        # Push entire block at once (avoids per-sample loop + lock overhead)
+        self.batch_buffer.push_block(indata)
 
         # Get batched input tensor: (block_size, channels, buffer_length)
         input_tensor = self.batch_buffer.get_batch_tensor(self.device)
@@ -308,9 +318,9 @@ class BatchedRealtimeProcessor(RealtimeProcessor):
             self._output_buffer[:] = output
         else:
             # PyTorch batched inference
-            with torch.no_grad():
+            with torch.inference_mode():
                 output = self.model(input_tensor)
-            self._output_buffer[:] = output.cpu().numpy()
+            self._output_tensor.copy_(output)
 
         return self._output_buffer
 

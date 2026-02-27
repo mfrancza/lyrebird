@@ -20,6 +20,7 @@ import torch
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from lyrebird_audio import FiniteImpulseResponseModel
+from pi.ring_buffer import BatchRingBuffer
 from pi.model_sizes import add_size_arguments, resolve_size_arguments, print_size_info
 
 
@@ -66,13 +67,13 @@ def benchmark_model_pytorch(
     model.eval()
 
     # Warmup
-    with torch.no_grad():
+    with torch.inference_mode():
         for _ in range(warmup):
             _ = model(input_tensor)
 
     # Benchmark
     latencies = []
-    with torch.no_grad():
+    with torch.inference_mode():
         for _ in range(num_iterations):
             start = time.perf_counter()
             _ = model(input_tensor)
@@ -157,7 +158,7 @@ def stress_test(
 
     print(f"Running stress test for {duration_seconds} seconds...")
 
-    with torch.no_grad():
+    with torch.inference_mode():
         while time.time() - start_time < duration_seconds:
             # Run batch of inferences
             batch_start = time.perf_counter()
@@ -192,6 +193,71 @@ def stress_test(
         "temp_max_c": max(temps) if len(temps) > 0 else None,
         "throttled": max(temps) >= 80 if len(temps) > 0 else None,
         "samples": samples,
+    }
+
+
+def benchmark_full_pipeline(
+    model: torch.nn.Module,
+    buffer_length: int,
+    block_size: int,
+    num_channels: int = 1,
+    num_iterations: int = 1000,
+    warmup: int = 100,
+) -> Dict[str, float]:
+    """
+    Benchmark the complete batched processing pipeline.
+
+    Simulates the full _process_block path: ring buffer push + tensor
+    construction + model forward + output copy, without audio hardware.
+    """
+    model.eval()
+
+    # Set up pipeline components
+    batch_buffer = BatchRingBuffer(buffer_length, block_size, num_channels)
+
+    # Pre-fill history
+    zeros = np.zeros((num_channels, buffer_length + block_size), dtype=np.float32)
+    for i in range(buffer_length + block_size):
+        batch_buffer.push(zeros[:, i])
+
+    output_buffer = np.zeros((block_size, num_channels), dtype=np.float32)
+    output_tensor = torch.from_numpy(output_buffer)
+    device = torch.device("cpu")
+
+    # Generate random input blocks
+    input_blocks = [
+        np.random.randn(block_size, num_channels).astype(np.float32)
+        for _ in range(num_iterations + warmup)
+    ]
+
+    # Warmup
+    with torch.inference_mode():
+        for i in range(warmup):
+            batch_buffer.push_block(input_blocks[i])
+            input_tensor = batch_buffer.get_batch_tensor(device)
+            output = model(input_tensor)
+            output_tensor.copy_(output)
+
+    # Benchmark
+    latencies = []
+    with torch.inference_mode():
+        for i in range(num_iterations):
+            start = time.perf_counter()
+            batch_buffer.push_block(input_blocks[warmup + i])
+            input_tensor = batch_buffer.get_batch_tensor(device)
+            output = model(input_tensor)
+            output_tensor.copy_(output)
+            end = time.perf_counter()
+            latencies.append((end - start) * 1e6)
+
+    return {
+        "mean_us": np.mean(latencies),
+        "std_us": np.std(latencies),
+        "min_us": np.min(latencies),
+        "max_us": np.max(latencies),
+        "p50_us": np.percentile(latencies, 50),
+        "p95_us": np.percentile(latencies, 95),
+        "p99_us": np.percentile(latencies, 99),
     }
 
 
@@ -266,6 +332,17 @@ def main():
     )
     parser.add_argument(
         "--stress-test", type=int, default=0, help="Run stress test for N seconds"
+    )
+    parser.add_argument(
+        "--full-pipeline",
+        action="store_true",
+        help="Benchmark full processing pipeline (buffer + tensor + model + output)",
+    )
+    parser.add_argument(
+        "--block-size",
+        type=int,
+        default=128,
+        help="Block size for full-pipeline benchmark",
     )
     parser.add_argument(
         "--sample-rate",
@@ -368,6 +445,36 @@ def main():
                 f"{stats['p99_us']:>10.2f} {stats['max_us']:>10.2f} {rt_ok:>6}"
             )
 
+        print()
+
+    # Full pipeline benchmark
+    if args.full_pipeline:
+        print("Full Pipeline Benchmark (batched)")
+        print("-" * 60)
+
+        block_budget = args.block_size / args.sample_rate * 1e6
+        print(
+            f"Block size: {args.block_size} samples, "
+            f"budget: {block_budget:.0f} μs/block"
+        )
+
+        stats = benchmark_full_pipeline(
+            model,
+            buffer_length,
+            args.block_size,
+            args.channels,
+            args.iterations,
+        )
+
+        rt_ok = "\u2713" if stats["p99_us"] < block_budget else "\u2717"
+        print(
+            f"Mean: {stats['mean_us']:.1f} μs | "
+            f"P50: {stats['p50_us']:.1f} μs | "
+            f"P95: {stats['p95_us']:.1f} μs | "
+            f"P99: {stats['p99_us']:.1f} μs | "
+            f"Max: {stats['max_us']:.1f} μs | "
+            f"RT: {rt_ok}"
+        )
         print()
 
     # Stress test
