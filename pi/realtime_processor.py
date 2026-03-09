@@ -334,7 +334,9 @@ class BatchedRealtimeProcessor(RealtimeProcessor):
             # PyTorch batched inference
             with torch.inference_mode():
                 output = self.model(input_tensor)
-            self._output_tensor.copy_(output)
+            # .cpu() is a no-op when already on CPU (Pi target); ensures
+            # correctness if model runs on CUDA since _output_tensor is CPU-backed.
+            self._output_tensor.copy_(output.cpu())
 
         return self._output_buffer
 

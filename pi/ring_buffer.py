@@ -185,6 +185,12 @@ class BatchRingBuffer:
         self._batch_pos = 0
         self._lock = threading.Lock()
 
+        # Pre-allocated staging buffer for sliding window output
+        # Shape: (batch_size, num_channels, buffer_length) — contiguous for torch
+        self._window_staging = np.zeros(
+            (batch_size, num_channels, buffer_length), dtype=np.float32
+        )
+
         # Pre-allocated batch tensor
         self._batch_tensor: Optional[torch.Tensor] = None
         self._tensor_device: Optional[torch.device] = None
@@ -293,9 +299,10 @@ class BatchRingBuffer:
                 windows = np.lib.stride_tricks.sliding_window_view(
                     history, self.buffer_length, axis=1
                 )[:, : self.batch_size, :]
-                # Transpose to (batch_size, channels, buffer_length) for model input
-                windows_t = np.ascontiguousarray(windows.transpose(1, 0, 2))
-            self._batch_tensor.copy_(torch.from_numpy(windows_t))
+                # Copy transposed view into pre-allocated staging buffer
+                # (avoids np.ascontiguousarray heap allocation every call)
+                np.copyto(self._window_staging, windows.transpose(1, 0, 2))
+            self._batch_tensor.copy_(torch.from_numpy(self._window_staging))
 
         return self._batch_tensor
 

@@ -132,8 +132,10 @@ class AudioIO:
 
         try:
             if self._callback is not None:
-                # Process audio — indata is valid for the callback duration per
-                # sounddevice guarantees; callbacks must not retain references.
+                # Avoid copying indata — sounddevice guarantees validity for
+                # the callback duration. Mark read-only to prevent accidental
+                # mutation; callbacks must not retain references.
+                indata.flags.writeable = False
                 result = self._callback(indata)
                 if result is not None:
                     outdata[:] = result
