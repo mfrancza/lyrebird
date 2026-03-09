@@ -139,6 +139,20 @@ class RingBuffer:
             self._linear_buffer[:, tail_len:] = self._buffer[:, : self._write_pos]
         return self._linear_buffer
 
+    def linearize_into(self, out: np.ndarray) -> None:
+        """
+        Copy buffer contents in chronological order into a provided array.
+
+        Thread-safe: acquires the lock internally.
+
+        Args:
+            out: Pre-allocated array of shape (num_channels, buffer_length)
+                 to receive the linearized data.
+        """
+        with self._lock:
+            self._linearize_buffer()
+            np.copyto(out, self._linear_buffer)
+
     def is_ready(self) -> bool:
         """Check if buffer has been filled at least once."""
         with self._lock:
@@ -179,6 +193,11 @@ class BatchRingBuffer:
 
         # Main history buffer
         self._history = RingBuffer(buffer_length + batch_size, num_channels)
+
+        # Pre-allocated buffer for linearized history output
+        self._history_linear = np.zeros(
+            (num_channels, buffer_length + batch_size), dtype=np.float32
+        )
 
         # Batch accumulator
         self._batch_buffer = np.zeros((num_channels, batch_size), dtype=np.float32)
@@ -293,15 +312,15 @@ class BatchRingBuffer:
                 )
                 self._tensor_device = device
 
-            with self._history._lock:
-                history = self._history._linearize_buffer()
-                # sliding_window_view: (channels, num_windows, buffer_length)
-                windows = np.lib.stride_tricks.sliding_window_view(
-                    history, self.buffer_length, axis=1
-                )[:, : self.batch_size, :]
-                # Copy transposed view into pre-allocated staging buffer
-                # (avoids np.ascontiguousarray heap allocation every call)
-                np.copyto(self._window_staging, windows.transpose(1, 0, 2))
+            # Linearize history via public API (acquires history lock internally)
+            self._history.linearize_into(self._history_linear)
+            # sliding_window_view: (channels, num_windows, buffer_length)
+            windows = np.lib.stride_tricks.sliding_window_view(
+                self._history_linear, self.buffer_length, axis=1
+            )[:, : self.batch_size, :]
+            # Copy transposed view into pre-allocated staging buffer
+            # (avoids np.ascontiguousarray heap allocation every call)
+            np.copyto(self._window_staging, windows.transpose(1, 0, 2))
             self._batch_tensor.copy_(torch.from_numpy(self._window_staging))
 
         return self._batch_tensor

@@ -101,7 +101,7 @@ class AudioIO:
         self._overruns = 0
         self._total_blocks = 0
         self._max_callback_time = 0.0
-        self._callback_times: deque = deque(maxlen=1000)
+        self._callback_times: deque[float] = deque(maxlen=1000)
 
     def set_callback(self, callback: Callable[[np.ndarray], np.ndarray]) -> None:
         """Set or update the processing callback.
