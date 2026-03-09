@@ -283,6 +283,20 @@ class BatchedRealtimeProcessor(RealtimeProcessor):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        # Re-trace model with actual batch size for optimal JIT optimization
+        if not self.use_onnx and isinstance(self.model, torch.jit.ScriptModule):
+            try:
+                dummy_input = torch.zeros(
+                    self.block_size,
+                    self.channels,
+                    self.buffer_length,
+                    device=self.device,
+                )
+                self.model = torch.jit.trace(self.model, dummy_input)
+                print(f"Re-traced JIT model with batch size {self.block_size}")
+            except Exception as e:
+                print(f"Batched JIT re-tracing failed: {e}")
+
         # Use batched ring buffer
         self.batch_buffer = BatchRingBuffer(
             self.buffer_length, self.block_size, self.channels
