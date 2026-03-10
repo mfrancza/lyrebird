@@ -78,7 +78,8 @@ cd vst
 #### Pi Runner
 ```bash
 cd pi
-pytest tests/ -v
+# Run only tests that don't require audio hardware (sounddevice/portaudio)
+pytest tests/test_ring_buffer.py tests/test_model_sizes.py tests/test_export_model.py -v
 ```
 
 ### Commit Message Guidelines

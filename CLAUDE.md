@@ -25,7 +25,8 @@ pytest tests/test_lyrebird.py::TestFiniteImpulseResponseModel::test_model_forwar
 
 **Run Pi tests:**
 ```bash
-cd pi && pytest tests/ -v
+# Run only tests that don't require audio hardware (sounddevice/portaudio)
+cd pi && pytest tests/test_ring_buffer.py tests/test_model_sizes.py tests/test_export_model.py -v
 ```
 
 **Launch Jupyter notebooks:**
