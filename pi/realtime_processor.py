@@ -301,12 +301,15 @@ class BatchedRealtimeProcessor(RealtimeProcessor):
             self.buffer_length, self.block_size, self.channels
         )
 
-        # Pre-fill with zeros
+        # Pre-fill with a whole number of blocks of zeros so the batch
+        # accumulator starts empty — otherwise buffer_length % block_size != 0
+        # leaves pending samples, forcing the slow path and shifting output
+        num_blocks = -(-(self.buffer_length + self.block_size) // self.block_size)
         zeros = np.zeros(
-            (self.channels, self.buffer_length + self.block_size), dtype=np.float32
+            (self.channels, num_blocks * self.block_size), dtype=np.float32
         )
-        for i in range(self.buffer_length + self.block_size):
-            self.batch_buffer.push(zeros[:, i])
+        self.batch_buffer.push(zeros)
+        assert self.batch_buffer.get_pending_count() == 0
 
         # Pre-allocated output tensor sharing memory with numpy output buffer
         self._output_tensor = torch.from_numpy(self._output_buffer)

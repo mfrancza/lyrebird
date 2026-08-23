@@ -224,10 +224,13 @@ def benchmark_full_pipeline(
     # Set up pipeline components
     batch_buffer = BatchRingBuffer(buffer_length, block_size, num_channels)
 
-    # Pre-fill history
-    zeros = np.zeros((num_channels, buffer_length + block_size), dtype=np.float32)
-    for i in range(buffer_length + block_size):
-        batch_buffer.push(zeros[:, i])
+    # Pre-fill history with a whole number of blocks so the accumulator is
+    # empty and every measured push_block() takes the fast path (matches
+    # BatchedRealtimeProcessor's prefill)
+    num_blocks = -(-(buffer_length + block_size) // block_size)
+    zeros = np.zeros((num_channels, num_blocks * block_size), dtype=np.float32)
+    batch_buffer.push(zeros)
+    assert batch_buffer.get_pending_count() == 0
 
     output_buffer = np.zeros((block_size, num_channels), dtype=np.float32)
     output_tensor = torch.from_numpy(output_buffer)
