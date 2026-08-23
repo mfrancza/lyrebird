@@ -65,6 +65,10 @@ class RealtimeProcessor:
         self.use_onnx = use_onnx
         self.device = torch.device(device)
 
+        # ONNX session — must be initialized before _load_model(), which
+        # populates it via _load_onnx() when use_onnx is set
+        self._onnx_session = None
+
         # Load model
         self._load_model()
 
@@ -92,9 +96,6 @@ class RealtimeProcessor:
 
         # Pre-allocated output buffer
         self._output_buffer = np.zeros((block_size, channels), dtype=np.float32)
-
-        # ONNX session (if used)
-        self._onnx_session = None
 
     def _load_model(self) -> None:
         """Load the trained model."""
@@ -143,10 +144,15 @@ class RealtimeProcessor:
         num_params = sum(p.numel() for p in self.model.parameters())
         print(f"Model parameters: {num_params:,}")
 
-        # JIT-trace model for faster inference (skip if ONNX is requested).
-        # Tracing an already-traced ScriptModule is a no-op, so the trace must
-        # happen exactly once, with the batch size the subclass will use.
-        if not self.use_onnx:
+        # Load ONNX first (if requested) so we know whether a session exists
+        if self.use_onnx:
+            self._load_onnx()
+
+        # JIT-trace unless an ONNX session will handle inference — a failed
+        # ONNX load falls back to the traced PyTorch model. Tracing an
+        # already-traced ScriptModule is a no-op, so the trace must happen
+        # exactly once, with the batch size the subclass will use.
+        if self._onnx_session is None:
             batch_size = self._jit_trace_batch_size()
             try:
                 dummy_input = torch.zeros(
@@ -156,10 +162,6 @@ class RealtimeProcessor:
                 print(f"JIT traced model with batch size {batch_size}")
             except Exception as e:
                 print(f"JIT tracing failed, using eager mode: {e}")
-
-        # Load ONNX if requested
-        if self.use_onnx:
-            self._load_onnx()
 
     def _jit_trace_batch_size(self) -> int:
         """Batch size used for JIT tracing. Subclasses override to match
