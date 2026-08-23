@@ -169,16 +169,25 @@ class RealtimeProcessor:
         return 1
 
     def _load_onnx(self) -> None:
-        """Load ONNX model for optimized inference."""
+        """Load ONNX model for optimized inference.
+
+        On any failure the session is left unset so the caller falls back
+        to the JIT-traced PyTorch model.
+        """
         try:
             import onnxruntime as ort
+        except ImportError:
+            print("ONNX Runtime not installed, using PyTorch")
+            self.use_onnx = False
+            return
 
-            onnx_path = str(Path(self.model_path).with_suffix(".onnx"))
-            if not os.path.exists(onnx_path):
-                print(f"ONNX model not found: {onnx_path}")
-                print("Run export_onnx.py to create it")
-                return
+        onnx_path = str(Path(self.model_path).with_suffix(".onnx"))
+        if not os.path.exists(onnx_path):
+            print(f"ONNX model not found: {onnx_path}")
+            print("Run export_onnx.py to create it")
+            return
 
+        try:
             # Configure ONNX Runtime
             sess_options = ort.SessionOptions()
             sess_options.intra_op_num_threads = 1
@@ -191,10 +200,9 @@ class RealtimeProcessor:
                 onnx_path, sess_options, providers=["CPUExecutionProvider"]
             )
             print(f"Loaded ONNX model: {onnx_path}")
-
-        except ImportError:
-            print("ONNX Runtime not installed, using PyTorch")
-            self.use_onnx = False
+        except Exception as e:
+            self._onnx_session = None
+            print(f"Failed to load ONNX model, falling back to PyTorch: {e}")
 
     def _process_block(self, indata: np.ndarray) -> np.ndarray:
         """
