@@ -37,6 +37,12 @@ class RingBuffer:
         self._samples_written = 0
         self._lock = threading.Lock()
 
+        # Pre-allocated linear buffer for zero-allocation linearization,
+        # plus a tensor view of it so get_tensor() doesn't allocate a
+        # torch.from_numpy wrapper per sample
+        self._linear_buffer = np.zeros((num_channels, buffer_length), dtype=dtype)
+        self._linear_tensor = torch.from_numpy(self._linear_buffer)
+
         # Pre-allocated tensor for inference (avoids allocation in hot path)
         self._tensor_buffer: Optional[torch.Tensor] = None
         self._tensor_device: Optional[torch.device] = None
@@ -84,20 +90,10 @@ class RingBuffer:
         Get the current buffer contents in chronological order.
 
         Returns:
-            NumPy array of shape (num_channels, buffer_length)
+            NumPy array of shape (num_channels, buffer_length) — always a copy
         """
         with self._lock:
-            if self._write_pos == 0:
-                return self._buffer.copy()
-            else:
-                # Reorder to chronological: [write_pos:] then [:write_pos]
-                return np.concatenate(
-                    [
-                        self._buffer[:, self._write_pos :],
-                        self._buffer[:, : self._write_pos],
-                    ],
-                    axis=1,
-                )
+            return self._linearize_buffer().copy()
 
     def get_tensor(self, device: Optional[torch.device] = None) -> torch.Tensor:
         """
@@ -125,26 +121,46 @@ class RingBuffer:
             )
             self._tensor_device = device
 
-        # Get buffer in chronological order and copy to tensor
-        # Note: get_buffer() returns a copy, ensuring thread safety
+        # Linearize buffer in-place and copy to tensor via the cached view
         with self._lock:
-            buffer_data = self._get_buffer_unlocked()
-            self._tensor_buffer[0].copy_(torch.from_numpy(buffer_data))
+            self._linearize_buffer()
+            self._tensor_buffer[0].copy_(self._linear_tensor)
 
         return self._tensor_buffer
 
-    def _get_buffer_unlocked(self) -> np.ndarray:
-        """Get buffer contents without acquiring lock (caller must hold lock)."""
+    def _linearize_buffer(self) -> np.ndarray:
+        """
+        Linearize buffer into chronological order using pre-allocated storage.
+
+        Caller must hold self._lock. Returns self._linear_buffer (not a copy).
+        """
         if self._write_pos == 0:
-            return self._buffer.copy()
+            self._linear_buffer[:] = self._buffer
         else:
-            return np.concatenate(
-                [
-                    self._buffer[:, self._write_pos :],
-                    self._buffer[:, : self._write_pos],
-                ],
-                axis=1,
-            )
+            tail_len = self.buffer_length - self._write_pos
+            self._linear_buffer[:, :tail_len] = self._buffer[:, self._write_pos :]
+            self._linear_buffer[:, tail_len:] = self._buffer[:, : self._write_pos]
+        return self._linear_buffer
+
+    def linearize_into(self, out: np.ndarray) -> None:
+        """
+        Copy buffer contents in chronological order into a provided array.
+
+        Thread-safe: acquires the lock internally.
+
+        Args:
+            out: Pre-allocated array of shape (num_channels, buffer_length)
+                 to receive the linearized data.
+        """
+        with self._lock:
+            # Write wrapped segments directly into out — avoids the extra
+            # full-history pass through _linear_buffer on the hot path
+            if self._write_pos == 0:
+                np.copyto(out, self._buffer)
+            else:
+                tail_len = self.buffer_length - self._write_pos
+                out[:, :tail_len] = self._buffer[:, self._write_pos :]
+                out[:, tail_len:] = self._buffer[:, : self._write_pos]
 
     def is_ready(self) -> bool:
         """Check if buffer has been filled at least once."""
@@ -155,6 +171,7 @@ class RingBuffer:
         """Clear the buffer and reset state."""
         with self._lock:
             self._buffer.fill(0)
+            self._linear_buffer.fill(0)
             self._write_pos = 0
             self._samples_written = 0
 
@@ -186,10 +203,30 @@ class BatchRingBuffer:
         # Main history buffer
         self._history = RingBuffer(buffer_length + batch_size, num_channels)
 
+        # Pre-allocated buffer for linearized history output
+        self._history_linear = np.zeros(
+            (num_channels, buffer_length + batch_size), dtype=np.float32
+        )
+
         # Batch accumulator
         self._batch_buffer = np.zeros((num_channels, batch_size), dtype=np.float32)
         self._batch_pos = 0
         self._lock = threading.Lock()
+
+        # Pre-allocated staging buffer for sliding window output
+        # Shape: (batch_size, num_channels, buffer_length) — contiguous for torch
+        self._window_staging = np.zeros(
+            (batch_size, num_channels, buffer_length), dtype=np.float32
+        )
+
+        # Precomputed stable views so get_batch_tensor() allocates nothing:
+        # sliding windows over _history_linear (which is updated in place
+        # each block) transposed to (batch, channels, buffer_length), and a
+        # tensor view sharing _window_staging's memory
+        self._windows_view = np.lib.stride_tricks.sliding_window_view(
+            self._history_linear, buffer_length, axis=1
+        )[:, :batch_size, :].transpose(1, 0, 2)
+        self._staging_tensor = torch.from_numpy(self._window_staging)
 
         # Pre-allocated batch tensor
         self._batch_tensor: Optional[torch.Tensor] = None
@@ -219,6 +256,44 @@ class BatchRingBuffer:
 
                 if self._batch_pos >= self.batch_size:
                     # Push batch to history and reset
+                    self._history.push(self._batch_buffer)
+                    self._batch_pos = 0
+                    batches_ready += 1
+
+            return batches_ready
+
+    def push_block(self, block: np.ndarray) -> int:
+        """
+        Push a full block of audio samples.
+
+        Optimized for the common case where block_size == batch_size and the
+        batch accumulator is empty — bypasses the per-sample loop entirely.
+
+        Args:
+            block: Audio samples, shape (block_size, channels)
+
+        Returns:
+            Number of complete batches ready for processing
+        """
+        with self._lock:
+            # Transpose to (channels, block_size) for internal storage
+            samples = block.T
+
+            num_samples = samples.shape[1]
+
+            # Fast path: block fills exactly one batch and accumulator is empty
+            if num_samples == self.batch_size and self._batch_pos == 0:
+                self._batch_buffer[:] = samples
+                self._history.push(self._batch_buffer)
+                return 1
+
+            # Slow path: process sample by sample (handles partial batches)
+            batches_ready = 0
+            for i in range(num_samples):
+                self._batch_buffer[:, self._batch_pos] = samples[:, i]
+                self._batch_pos += 1
+
+                if self._batch_pos >= self.batch_size:
                     self._history.push(self._batch_buffer)
                     self._batch_pos = 0
                     batches_ready += 1
@@ -255,11 +330,12 @@ class BatchRingBuffer:
                 )
                 self._tensor_device = device
 
-            history = self._history.get_buffer()
-            for i in range(self.batch_size):
-                start = i
-                end = start + self.buffer_length
-                self._batch_tensor[i].copy_(torch.from_numpy(history[:, start:end]))
+            # Linearize history via public API (acquires history lock internally)
+            self._history.linearize_into(self._history_linear)
+            # Copy through the precomputed views — no per-call view/tensor
+            # wrapper allocation
+            np.copyto(self._window_staging, self._windows_view)
+            self._batch_tensor.copy_(self._staging_tensor)
 
         return self._batch_tensor
 

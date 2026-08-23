@@ -7,6 +7,7 @@ different audio backends and devices.
 
 import numpy as np
 import sounddevice as sd
+from collections import deque
 from typing import Optional, Callable, List, Dict, Any
 from dataclasses import dataclass
 import threading
@@ -100,7 +101,7 @@ class AudioIO:
         self._overruns = 0
         self._total_blocks = 0
         self._max_callback_time = 0.0
-        self._callback_times: List[float] = []
+        self._callback_times: deque[float] = deque(maxlen=1000)
 
     def set_callback(self, callback: Callable[[np.ndarray], np.ndarray]) -> None:
         """Set or update the processing callback.
@@ -131,8 +132,11 @@ class AudioIO:
 
         try:
             if self._callback is not None:
-                # Process audio
-                result = self._callback(indata.copy())
+                # Avoid copying indata — sounddevice guarantees validity for
+                # the callback duration. Mark read-only to prevent accidental
+                # mutation; callbacks must not retain references.
+                indata.flags.writeable = False
+                result = self._callback(indata)
                 if result is not None:
                     outdata[:] = result
                 else:
@@ -148,10 +152,7 @@ class AudioIO:
         with self._stats_lock:
             self._total_blocks += 1
             self._max_callback_time = max(self._max_callback_time, elapsed)
-            # Keep last 1000 timing samples
             self._callback_times.append(elapsed)
-            if len(self._callback_times) > 1000:
-                self._callback_times.pop(0)
 
     def start(self) -> None:
         """Start audio stream."""

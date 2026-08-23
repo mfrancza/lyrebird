@@ -178,19 +178,111 @@ class TestBatchRingBuffer:
         assert tensor.shape == (3, 1, 4)
 
     def test_batch_tensor_content(self):
-        """Test batch tensor contains sliding windows."""
-        buffer = BatchRingBuffer(buffer_length=4, batch_size=2, num_channels=1)
+        """Test batch tensor contains correct sliding window values."""
+        buffer = BatchRingBuffer(buffer_length=4, batch_size=3, num_channels=1)
 
-        # Fill with sequence
-        for i in range(8):
+        # Fill with known sequence: 0,1,2,...,9
+        for i in range(10):
             buffer.push(np.array([float(i)]))
 
+        # 10 samples with batch_size=3: batches [0,1,2], [3,4,5], [6,7,8]; sample 9 pending
+        # History(size=7) linearized: [2,3,4,5,6,7,8]
+        # Sliding windows of length 4:
+        #   window 0: [2,3,4,5]
+        #   window 1: [3,4,5,6]
+        #   window 2: [4,5,6,7]
         tensor = buffer.get_batch_tensor()
 
-        # Each row should be a sliding window
-        # Window 0: samples around position 0
-        # Window 1: samples around position 1
-        assert tensor.shape == (2, 1, 4)
+        assert tensor.shape == (3, 1, 4)
+        expected = torch.tensor(
+            [
+                [[2.0, 3.0, 4.0, 5.0]],
+                [[3.0, 4.0, 5.0, 6.0]],
+                [[4.0, 5.0, 6.0, 7.0]],
+            ]
+        )
+        torch.testing.assert_close(tensor, expected)
+
+    def test_batch_tensor_content_stereo(self):
+        """Test batch tensor with stereo channels."""
+        buffer = BatchRingBuffer(buffer_length=3, batch_size=2, num_channels=2)
+
+        for i in range(7):
+            buffer.push(np.array([float(i), float(i) * 10]))
+
+        tensor = buffer.get_batch_tensor()
+        assert tensor.shape == (2, 2, 3)
+
+        # 7 samples with batch_size=2: batches [0,1], [2,3], [4,5]; sample 6 pending
+        # History(size=5) linearized: [1,2,3,4,5]
+        # Sliding windows of length 3:
+        #   window 0: [1,2,3], window 1: [2,3,4]
+        expected_ch0 = torch.tensor([[1.0, 2.0, 3.0], [2.0, 3.0, 4.0]])
+        expected_ch1 = torch.tensor([[10.0, 20.0, 30.0], [20.0, 30.0, 40.0]])
+        torch.testing.assert_close(tensor[:, 0, :], expected_ch0)
+        torch.testing.assert_close(tensor[:, 1, :], expected_ch1)
+
+    def test_push_block(self):
+        """Test push_block produces same results as per-sample push."""
+        buffer_length = 4
+        batch_size = 3
+        num_channels = 1
+
+        # Create two buffers - one uses push, the other uses push_block
+        buf_sample = BatchRingBuffer(buffer_length, batch_size, num_channels)
+        buf_block = BatchRingBuffer(buffer_length, batch_size, num_channels)
+
+        # Pre-fill both identically with a multiple of batch_size so the
+        # batch accumulator is empty and push_block takes the fast path
+        # (the partial-batch test below covers the slow path)
+        for i in range(2 * batch_size):
+            sample = np.array([float(i)])
+            buf_sample.push(sample)
+            buf_block.push(sample)
+        assert buf_block.get_pending_count() == 0
+
+        # Now push a block via both methods
+        block = np.array([[10.0], [11.0], [12.0]], dtype=np.float32)
+
+        for i in range(batch_size):
+            buf_sample.push(block[i])
+        batches = buf_block.push_block(block)
+
+        assert batches == 1
+
+        tensor_sample = buf_sample.get_batch_tensor()
+        tensor_block = buf_block.get_batch_tensor()
+        torch.testing.assert_close(tensor_sample, tensor_block)
+
+    def test_push_block_partial_batch(self):
+        """Test push_block when batch accumulator is partially filled."""
+        buffer_length = 4
+        batch_size = 4
+        num_channels = 1
+
+        buf_sample = BatchRingBuffer(buffer_length, batch_size, num_channels)
+        buf_block = BatchRingBuffer(buffer_length, batch_size, num_channels)
+
+        # Pre-fill both
+        for i in range(buffer_length + batch_size):
+            sample = np.array([float(i)])
+            buf_sample.push(sample)
+            buf_block.push(sample)
+
+        # Push 1 sample to offset the batch accumulator
+        buf_sample.push(np.array([100.0]))
+        buf_block.push(np.array([100.0]))
+
+        # Now push a block of 4 — it will split across batch boundaries
+        block = np.array([[20.0], [21.0], [22.0], [23.0]], dtype=np.float32)
+
+        for i in range(4):
+            buf_sample.push(block[i])
+        buf_block.push_block(block)
+
+        tensor_sample = buf_sample.get_batch_tensor()
+        tensor_block = buf_block.get_batch_tensor()
+        torch.testing.assert_close(tensor_sample, tensor_block)
 
     def test_reset(self):
         """Test batch buffer reset."""

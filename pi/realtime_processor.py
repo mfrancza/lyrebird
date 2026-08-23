@@ -65,6 +65,10 @@ class RealtimeProcessor:
         self.use_onnx = use_onnx
         self.device = torch.device(device)
 
+        # ONNX session — must be initialized before _load_model(), which
+        # populates it via _load_onnx() when use_onnx is set
+        self._onnx_session = None
+
         # Load model
         self._load_model()
 
@@ -92,9 +96,6 @@ class RealtimeProcessor:
 
         # Pre-allocated output buffer
         self._output_buffer = np.zeros((block_size, channels), dtype=np.float32)
-
-        # ONNX session (if used)
-        self._onnx_session = None
 
     def _load_model(self) -> None:
         """Load the trained model."""
@@ -143,21 +144,50 @@ class RealtimeProcessor:
         num_params = sum(p.numel() for p in self.model.parameters())
         print(f"Model parameters: {num_params:,}")
 
-        # Load ONNX if requested
+        # Load ONNX first (if requested) so we know whether a session exists
         if self.use_onnx:
             self._load_onnx()
 
+        # JIT-trace unless an ONNX session will handle inference — a failed
+        # ONNX load falls back to the traced PyTorch model. Tracing an
+        # already-traced ScriptModule is a no-op, so the trace must happen
+        # exactly once, with the batch size the subclass will use.
+        if self._onnx_session is None:
+            batch_size = self._jit_trace_batch_size()
+            try:
+                dummy_input = torch.zeros(
+                    batch_size, self.channels, self.buffer_length, device=self.device
+                )
+                self.model = torch.jit.trace(self.model, dummy_input)
+                print(f"JIT traced model with batch size {batch_size}")
+            except Exception as e:
+                print(f"JIT tracing failed, using eager mode: {e}")
+
+    def _jit_trace_batch_size(self) -> int:
+        """Batch size used for JIT tracing. Subclasses override to match
+        their inference batch shape."""
+        return 1
+
     def _load_onnx(self) -> None:
-        """Load ONNX model for optimized inference."""
+        """Load ONNX model for optimized inference.
+
+        On any failure the session is left unset so the caller falls back
+        to the JIT-traced PyTorch model.
+        """
         try:
             import onnxruntime as ort
+        except ImportError:
+            print("ONNX Runtime not installed, using PyTorch")
+            self.use_onnx = False
+            return
 
-            onnx_path = str(Path(self.model_path).with_suffix(".onnx"))
-            if not os.path.exists(onnx_path):
-                print(f"ONNX model not found: {onnx_path}")
-                print("Run export_onnx.py to create it")
-                return
+        onnx_path = str(Path(self.model_path).with_suffix(".onnx"))
+        if not os.path.exists(onnx_path):
+            print(f"ONNX model not found: {onnx_path}")
+            print("Run export_onnx.py to create it")
+            return
 
+        try:
             # Configure ONNX Runtime
             sess_options = ort.SessionOptions()
             sess_options.intra_op_num_threads = 1
@@ -170,10 +200,9 @@ class RealtimeProcessor:
                 onnx_path, sess_options, providers=["CPUExecutionProvider"]
             )
             print(f"Loaded ONNX model: {onnx_path}")
-
-        except ImportError:
-            print("ONNX Runtime not installed, using PyTorch")
-            self.use_onnx = False
+        except Exception as e:
+            self._onnx_session = None
+            print(f"Failed to load ONNX model, falling back to PyTorch: {e}")
 
     def _process_block(self, indata: np.ndarray) -> np.ndarray:
         """
@@ -192,26 +221,24 @@ class RealtimeProcessor:
 
         # Process sample by sample
         # Note: For better efficiency, consider batched processing
-        for i in range(self.block_size):
-            # Get input sample and add to ring buffer
-            sample = indata[i]  # Shape: (channels,)
-            self.ring_buffer.push(sample)
-
-            # Get buffer as tensor and run inference
-            input_tensor = self.ring_buffer.get_tensor(self.device)
-
-            if self._onnx_session is not None:
-                # ONNX inference
+        if self._onnx_session is not None:
+            for i in range(self.block_size):
+                sample = indata[i]  # Shape: (channels,)
+                self.ring_buffer.push(sample)
+                input_tensor = self.ring_buffer.get_tensor(self.device)
                 ort_inputs = {
                     self._onnx_session.get_inputs()[0].name: input_tensor.cpu().numpy()
                 }
                 output = self._onnx_session.run(None, ort_inputs)[0]
                 self._output_buffer[i] = output[0]
-            else:
-                # PyTorch inference
-                with torch.no_grad():
+        else:
+            with torch.inference_mode():
+                for i in range(self.block_size):
+                    sample = indata[i]  # Shape: (channels,)
+                    self.ring_buffer.push(sample)
+                    input_tensor = self.ring_buffer.get_tensor(self.device)
                     output = self.model(input_tensor)
-                self._output_buffer[i] = output.cpu().numpy()[0]
+                    self._output_buffer[i] = output.cpu().numpy()[0]
 
         return self._output_buffer
 
@@ -271,6 +298,11 @@ class BatchedRealtimeProcessor(RealtimeProcessor):
     which is more efficient on most hardware.
     """
 
+    def _jit_trace_batch_size(self) -> int:
+        """Trace with the full block size so the JIT graph is optimized
+        for the batched inference shape."""
+        return self.block_size
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -279,22 +311,26 @@ class BatchedRealtimeProcessor(RealtimeProcessor):
             self.buffer_length, self.block_size, self.channels
         )
 
-        # Pre-fill with zeros
+        # Pre-fill with a whole number of blocks of zeros so the batch
+        # accumulator starts empty — otherwise buffer_length % block_size != 0
+        # leaves pending samples, forcing the slow path and shifting output
+        num_blocks = -(-(self.buffer_length + self.block_size) // self.block_size)
         zeros = np.zeros(
-            (self.channels, self.buffer_length + self.block_size), dtype=np.float32
+            (self.channels, num_blocks * self.block_size), dtype=np.float32
         )
-        for i in range(self.buffer_length + self.block_size):
-            self.batch_buffer.push(zeros[:, i])
+        self.batch_buffer.push(zeros)
+        assert self.batch_buffer.get_pending_count() == 0
+
+        # Pre-allocated output tensor sharing memory with numpy output buffer
+        self._output_tensor = torch.from_numpy(self._output_buffer)
 
     def _process_block(self, indata: np.ndarray) -> np.ndarray:
         """Process a block using batched inference."""
         if self.bypass:
             return indata
 
-        # Push all input samples to batch buffer
-        # Note: We process as a batch after all samples are pushed
-        for i in range(self.block_size):
-            self.batch_buffer.push(indata[i])
+        # Push entire block at once (avoids per-sample loop + lock overhead)
+        self.batch_buffer.push_block(indata)
 
         # Get batched input tensor: (block_size, channels, buffer_length)
         input_tensor = self.batch_buffer.get_batch_tensor(self.device)
@@ -308,9 +344,11 @@ class BatchedRealtimeProcessor(RealtimeProcessor):
             self._output_buffer[:] = output
         else:
             # PyTorch batched inference
-            with torch.no_grad():
+            with torch.inference_mode():
                 output = self.model(input_tensor)
-            self._output_buffer[:] = output.cpu().numpy()
+            # .cpu() is a no-op when already on CPU (Pi target); ensures
+            # correctness if model runs on CUDA since _output_tensor is CPU-backed.
+            self._output_tensor.copy_(output.cpu())
 
         return self._output_buffer
 
