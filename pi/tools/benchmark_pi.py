@@ -479,7 +479,9 @@ def main():
             args.iterations,
         )
 
-        rt_ok = "\u2713" if stats["p99_us"] < block_budget else "\u2717"
+        # Real-time means zero deadline misses \u2014 judge on the worst case,
+        # not P99 (1% of blocks over budget is an audible dropout per second)
+        rt_ok = "\u2713" if stats["max_us"] < block_budget else "\u2717"
         print(
             f"Mean: {stats['mean_us']:.1f} μs | "
             f"P50: {stats['p50_us']:.1f} μs | "
