@@ -150,8 +150,14 @@ class RingBuffer:
                  to receive the linearized data.
         """
         with self._lock:
-            self._linearize_buffer()
-            np.copyto(out, self._linear_buffer)
+            # Write wrapped segments directly into out — avoids the extra
+            # full-history pass through _linear_buffer on the hot path
+            if self._write_pos == 0:
+                np.copyto(out, self._buffer)
+            else:
+                tail_len = self.buffer_length - self._write_pos
+                out[:, :tail_len] = self._buffer[:, self._write_pos :]
+                out[:, tail_len:] = self._buffer[:, : self._write_pos]
 
     def is_ready(self) -> bool:
         """Check if buffer has been filled at least once."""

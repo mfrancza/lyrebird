@@ -239,25 +239,26 @@ def benchmark_full_pipeline(
         for _ in range(num_iterations + warmup)
     ]
 
-    # Warmup
-    with torch.inference_mode():
-        for i in range(warmup):
-            batch_buffer.push_block(input_blocks[i])
-            input_tensor = batch_buffer.get_batch_tensor(device)
+    # Warmup — enter inference_mode per block, matching
+    # BatchedRealtimeProcessor._process_block()
+    for i in range(warmup):
+        batch_buffer.push_block(input_blocks[i])
+        input_tensor = batch_buffer.get_batch_tensor(device)
+        with torch.inference_mode():
             output = model(input_tensor)
-            output_tensor.copy_(output)
+        output_tensor.copy_(output.cpu())
 
     # Benchmark
     latencies = []
-    with torch.inference_mode():
-        for i in range(num_iterations):
-            start = time.perf_counter()
-            batch_buffer.push_block(input_blocks[warmup + i])
-            input_tensor = batch_buffer.get_batch_tensor(device)
+    for i in range(num_iterations):
+        start = time.perf_counter()
+        batch_buffer.push_block(input_blocks[warmup + i])
+        input_tensor = batch_buffer.get_batch_tensor(device)
+        with torch.inference_mode():
             output = model(input_tensor)
-            output_tensor.copy_(output)
-            end = time.perf_counter()
-            latencies.append((end - start) * 1e6)
+        output_tensor.copy_(output.cpu())
+        end = time.perf_counter()
+        latencies.append((end - start) * 1e6)
 
     return {
         "mean_us": np.mean(latencies),

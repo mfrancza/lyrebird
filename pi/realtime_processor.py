@@ -157,14 +157,14 @@ class RealtimeProcessor:
             except Exception as e:
                 print(f"JIT tracing failed, using eager mode: {e}")
 
+        # Load ONNX if requested
+        if self.use_onnx:
+            self._load_onnx()
+
     def _jit_trace_batch_size(self) -> int:
         """Batch size used for JIT tracing. Subclasses override to match
         their inference batch shape."""
         return 1
-
-        # Load ONNX if requested
-        if self.use_onnx:
-            self._load_onnx()
 
     def _load_onnx(self) -> None:
         """Load ONNX model for optimized inference."""
