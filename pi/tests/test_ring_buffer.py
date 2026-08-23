@@ -232,11 +232,14 @@ class TestBatchRingBuffer:
         buf_sample = BatchRingBuffer(buffer_length, batch_size, num_channels)
         buf_block = BatchRingBuffer(buffer_length, batch_size, num_channels)
 
-        # Pre-fill both identically
-        for i in range(buffer_length + batch_size):
+        # Pre-fill both identically with a multiple of batch_size so the
+        # batch accumulator is empty and push_block takes the fast path
+        # (the partial-batch test below covers the slow path)
+        for i in range(2 * batch_size):
             sample = np.array([float(i)])
             buf_sample.push(sample)
             buf_block.push(sample)
+        assert buf_block.get_pending_count() == 0
 
         # Now push a block via both methods
         block = np.array([[10.0], [11.0], [12.0]], dtype=np.float32)

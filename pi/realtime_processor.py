@@ -143,16 +143,24 @@ class RealtimeProcessor:
         num_params = sum(p.numel() for p in self.model.parameters())
         print(f"Model parameters: {num_params:,}")
 
-        # JIT-trace model for faster inference (skip if ONNX is requested)
+        # JIT-trace model for faster inference (skip if ONNX is requested).
+        # Tracing an already-traced ScriptModule is a no-op, so the trace must
+        # happen exactly once, with the batch size the subclass will use.
         if not self.use_onnx:
+            batch_size = self._jit_trace_batch_size()
             try:
                 dummy_input = torch.zeros(
-                    1, self.channels, self.buffer_length, device=self.device
+                    batch_size, self.channels, self.buffer_length, device=self.device
                 )
                 self.model = torch.jit.trace(self.model, dummy_input)
-                print("JIT traced model for optimized inference")
+                print(f"JIT traced model with batch size {batch_size}")
             except Exception as e:
                 print(f"JIT tracing failed, using eager mode: {e}")
+
+    def _jit_trace_batch_size(self) -> int:
+        """Batch size used for JIT tracing. Subclasses override to match
+        their inference batch shape."""
+        return 1
 
         # Load ONNX if requested
         if self.use_onnx:
@@ -280,22 +288,13 @@ class BatchedRealtimeProcessor(RealtimeProcessor):
     which is more efficient on most hardware.
     """
 
+    def _jit_trace_batch_size(self) -> int:
+        """Trace with the full block size so the JIT graph is optimized
+        for the batched inference shape."""
+        return self.block_size
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-        # Re-trace model with actual batch size for optimal JIT optimization
-        if not self.use_onnx and isinstance(self.model, torch.jit.ScriptModule):
-            try:
-                dummy_input = torch.zeros(
-                    self.block_size,
-                    self.channels,
-                    self.buffer_length,
-                    device=self.device,
-                )
-                self.model = torch.jit.trace(self.model, dummy_input)
-                print(f"Re-traced JIT model with batch size {self.block_size}")
-            except Exception as e:
-                print(f"Batched JIT re-tracing failed: {e}")
 
         # Use batched ring buffer
         self.batch_buffer = BatchRingBuffer(

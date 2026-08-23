@@ -212,6 +212,15 @@ def benchmark_full_pipeline(
     """
     model.eval()
 
+    # JIT-trace with the block-sized input, matching BatchedRealtimeProcessor's
+    # deployed model path (same fallback to eager mode on failure)
+    try:
+        dummy_input = torch.zeros(block_size, num_channels, buffer_length)
+        model = torch.jit.trace(model, dummy_input)
+        print(f"JIT traced model with batch size {block_size}")
+    except Exception as e:
+        print(f"JIT tracing failed, benchmarking eager mode: {e}")
+
     # Set up pipeline components
     batch_buffer = BatchRingBuffer(buffer_length, block_size, num_channels)
 
