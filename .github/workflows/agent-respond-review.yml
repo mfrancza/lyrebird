@@ -1,0 +1,48 @@
+name: agent-respond-review
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: agent-respond-review-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  respond-review:
+    # Only respond on developer-agent PRs, to reviews from trusted actors.
+    # The second line excludes the agent's own thread replies, which GitHub
+    # materialises as reviews and would otherwise re-trigger this workflow.
+    # Copilot appears as `Copilot` in the event payload; the REST-form logins
+    # are kept defensively.
+    if: >
+      github.event.pull_request.user.login == 'mfrancza-developer-agent[bot]' &&
+      github.event.review.user.login != github.event.pull_request.user.login &&
+      (
+        contains(fromJSON(vars.AGENT_ALLOWLIST), github.event.review.user.login) ||
+        github.event.review.user.login == 'mfrancza-reviewer-agent[bot]' ||
+        github.event.review.user.login == 'Copilot' ||
+        github.event.review.user.login == 'copilot-pull-request-reviewer[bot]' ||
+        github.event.review.user.login == 'github-copilot[bot]'
+      )
+    uses: mfrancza/agentic-development-workflow/.github/workflows/agent-respond-review-reusable.yml@v0
+    with:
+      pr-number: ${{ github.event.pull_request.number }}
+      review-state: ${{ github.event.review.state }}
+      review-body: ${{ github.event.review.body }}
+      review-id: ${{ github.event.review.id }}
+      review-author: ${{ github.event.review.user.login }}
+      pr-author: ${{ github.event.pull_request.user.login }}
+      repo-name: ${{ github.event.repository.name }}
+      image: ghcr.io/mfrancza/agentic-development-workflow/developer:v0
+      helpers-ref: v0
+    secrets:
+      DEVELOPER_APP_ID: ${{ secrets.DEVELOPER_APP_ID }}
+      DEVELOPER_APP_PRIVATE_KEY: ${{ secrets.DEVELOPER_APP_PRIVATE_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      XAI_API_KEY: ${{ secrets.XAI_API_KEY }}

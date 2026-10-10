@@ -1,0 +1,114 @@
+name: agent-auto-trigger
+
+on:
+  issues:
+    types: [opened, labeled, unlabeled, closed]
+  pull_request:
+    types: [opened]
+
+permissions:
+  contents: read
+
+jobs:
+  auto-groom:
+    if: >
+      github.event_name == 'issues' &&
+      github.event.action == 'opened' &&
+      vars.AUTO_TRIGGER_AGENTS != '' &&
+      fromJSON(vars.AUTO_TRIGGER_AGENTS).groom == true &&
+      contains(fromJSON(vars.AGENT_ALLOWLIST), github.event.sender.login) &&
+      !contains(github.event.issue.labels.*.name, 'draft')
+    uses: mfrancza/agentic-development-workflow/.github/workflows/agent-auto-trigger-reusable.yml@v0
+    with:
+      transition: auto-groom
+      issue-number: ${{ github.event.issue.number }}
+      helpers-ref: v0
+    secrets:
+      DEVELOPER_APP_ID: ${{ secrets.DEVELOPER_APP_ID }}
+      DEVELOPER_APP_PRIVATE_KEY: ${{ secrets.DEVELOPER_APP_PRIVATE_KEY }}
+
+  auto-design:
+    if: >
+      github.event_name == 'issues' &&
+      github.event.action == 'labeled' &&
+      github.event.label.name == 'plan' &&
+      vars.AUTO_TRIGGER_AGENTS != '' &&
+      fromJSON(vars.AUTO_TRIGGER_AGENTS).design == true &&
+      contains(fromJSON(vars.AGENT_ALLOWLIST), github.event.sender.login)
+    uses: mfrancza/agentic-development-workflow/.github/workflows/agent-auto-trigger-reusable.yml@v0
+    with:
+      transition: auto-design
+      issue-number: ${{ github.event.issue.number }}
+      helpers-ref: v0
+    secrets:
+      DEVELOPER_APP_ID: ${{ secrets.DEVELOPER_APP_ID }}
+      DEVELOPER_APP_PRIVATE_KEY: ${{ secrets.DEVELOPER_APP_PRIVATE_KEY }}
+
+  auto-developer-do:
+    if: >
+      github.event_name == 'issues' &&
+      github.event.action == 'labeled' &&
+      github.event.label.name == 'do' &&
+      vars.AUTO_TRIGGER_AGENTS != '' &&
+      fromJSON(vars.AUTO_TRIGGER_AGENTS).developer == true &&
+      contains(fromJSON(vars.AGENT_ALLOWLIST), github.event.sender.login) &&
+      !contains(github.event.issue.labels.*.name, 'draft')
+    uses: mfrancza/agentic-development-workflow/.github/workflows/agent-auto-trigger-reusable.yml@v0
+    with:
+      transition: auto-developer-do
+      issue-number: ${{ github.event.issue.number }}
+      helpers-ref: v0
+    secrets:
+      DEVELOPER_APP_ID: ${{ secrets.DEVELOPER_APP_ID }}
+      DEVELOPER_APP_PRIVATE_KEY: ${{ secrets.DEVELOPER_APP_PRIVATE_KEY }}
+
+  auto-developer-undraft:
+    if: >
+      github.event_name == 'issues' &&
+      github.event.action == 'unlabeled' &&
+      github.event.label.name == 'draft' &&
+      vars.AUTO_TRIGGER_AGENTS != '' &&
+      fromJSON(vars.AUTO_TRIGGER_AGENTS).developer == true &&
+      contains(fromJSON(vars.AGENT_ALLOWLIST), github.event.sender.login)
+    uses: mfrancza/agentic-development-workflow/.github/workflows/agent-auto-trigger-reusable.yml@v0
+    with:
+      transition: auto-developer-undraft
+      issue-number: ${{ github.event.issue.number }}
+      helpers-ref: v0
+    secrets:
+      DEVELOPER_APP_ID: ${{ secrets.DEVELOPER_APP_ID }}
+      DEVELOPER_APP_PRIVATE_KEY: ${{ secrets.DEVELOPER_APP_PRIVATE_KEY }}
+
+  auto-review:
+    if: >
+      github.event_name == 'pull_request' &&
+      github.event.action == 'opened' &&
+      (startsWith(github.event.pull_request.head.ref, 'agent/') ||
+       startsWith(github.event.pull_request.head.ref, 'design/')) &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      vars.AUTO_TRIGGER_AGENTS != '' &&
+      fromJSON(vars.AUTO_TRIGGER_AGENTS).review == true
+    uses: mfrancza/agentic-development-workflow/.github/workflows/agent-auto-trigger-reusable.yml@v0
+    with:
+      transition: auto-review
+      pr-number: ${{ github.event.pull_request.number }}
+      helpers-ref: v0
+    secrets:
+      DEVELOPER_APP_ID: ${{ secrets.DEVELOPER_APP_ID }}
+      DEVELOPER_APP_PRIVATE_KEY: ${{ secrets.DEVELOPER_APP_PRIVATE_KEY }}
+
+  auto-developer-unblock:
+    if: >
+      github.event_name == 'issues' &&
+      github.event.action == 'closed' &&
+      vars.AUTO_TRIGGER_AGENTS != '' &&
+      fromJSON(vars.AUTO_TRIGGER_AGENTS).developer == true &&
+      contains(fromJSON(vars.AGENT_ALLOWLIST), github.event.sender.login)
+    uses: mfrancza/agentic-development-workflow/.github/workflows/agent-auto-trigger-reusable.yml@v0
+    with:
+      transition: auto-developer-unblock
+      issue-number: ${{ github.event.issue.number }}
+      helpers-ref: v0
+    secrets:
+      DEVELOPER_APP_ID: ${{ secrets.DEVELOPER_APP_ID }}
+      DEVELOPER_APP_PRIVATE_KEY: ${{ secrets.DEVELOPER_APP_PRIVATE_KEY }}

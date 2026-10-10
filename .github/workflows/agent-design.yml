@@ -1,0 +1,53 @@
+name: agent-design
+
+on:
+  issues:
+    types: [labeled]
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: read
+
+jobs:
+  call-design:
+    if: >
+      github.event.label.name == 'agent:design' &&
+      github.event.issue.state == 'open' &&
+      contains(fromJSON(vars.AGENT_ALLOWLIST), github.event.sender.login)
+    concurrency:
+      group: agent-design-issue-${{ github.event.issue.number }}
+      cancel-in-progress: false
+    uses: mfrancza/agentic-development-workflow/.github/workflows/agent-design-reusable.yml@v0
+    with:
+      run-design: true
+      issue-number: ${{ github.event.issue.number }}
+      repo: ${{ github.repository }}
+      image: ghcr.io/mfrancza/agentic-development-workflow/developer:v0
+      default-model: ${{ vars.DEFAULT_MODEL }}
+      logs-retention-days: 30
+      helpers-ref: v0
+    secrets:
+      DEVELOPER_APP_ID: ${{ secrets.DEVELOPER_APP_ID }}
+      DEVELOPER_APP_PRIVATE_KEY: ${{ secrets.DEVELOPER_APP_PRIVATE_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+
+  call-undraft:
+    if: >
+      github.event.pull_request.merged == true &&
+      startsWith(github.event.pull_request.head.ref, 'design/issue-') &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    uses: mfrancza/agentic-development-workflow/.github/workflows/agent-design-reusable.yml@v0
+    with:
+      run-undraft: true
+      pr-head-ref: ${{ github.event.pull_request.head.ref }}
+      repo: ${{ github.repository }}
+      helpers-ref: v0
+    secrets:
+      DEVELOPER_APP_ID: ${{ secrets.DEVELOPER_APP_ID }}
+      DEVELOPER_APP_PRIVATE_KEY: ${{ secrets.DEVELOPER_APP_PRIVATE_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
