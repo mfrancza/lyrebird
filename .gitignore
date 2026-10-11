@@ -212,3 +212,9 @@ __marimo__/
 # VST build artifacts
 vst/build/
 vst/build-windows/
+
+# Terraform
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/*.tfplan

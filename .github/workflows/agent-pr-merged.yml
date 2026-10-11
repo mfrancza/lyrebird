@@ -1,0 +1,46 @@
+name: agent-pr-merged
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: agent-pr-merged-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  extract-issue-number:
+    if: github.event.pull_request.user.login == 'mfrancza-developer-agent[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      proceed: ${{ steps.lookup.outputs.proceed }}
+      issue_number: ${{ steps.lookup.outputs.issue_number }}
+    steps:
+      - name: Extract linked issue number from PR body
+        id: lookup
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          set -euo pipefail
+          ISSUE_NUM="$(printf '%s' "$PR_BODY" | grep -oiE 'closes #[0-9]+' | head -1 | grep -oE '[0-9]+' || true)"
+          if [ -z "${ISSUE_NUM:-}" ]; then
+            echo "proceed=false" >> "$GITHUB_OUTPUT"
+          else
+            ISSUE_NUM="$(printf '%s' "$ISSUE_NUM" | tr -d '\r\n')"
+            echo "proceed=true" >> "$GITHUB_OUTPUT"
+            echo "issue_number=${ISSUE_NUM}" >> "$GITHUB_OUTPUT"
+          fi
+
+  remove-developer-label:
+    needs: extract-issue-number
+    if: needs.extract-issue-number.outputs.proceed == 'true'
+    uses: mfrancza/agentic-development-workflow/.github/workflows/agent-pr-merged-reusable.yml@v0
+    with:
+      issue-number: ${{ needs.extract-issue-number.outputs.issue_number }}
+    secrets:
+      DEVELOPER_APP_ID: ${{ secrets.DEVELOPER_APP_ID }}
+      DEVELOPER_APP_PRIVATE_KEY: ${{ secrets.DEVELOPER_APP_PRIVATE_KEY }}
