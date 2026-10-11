@@ -15,7 +15,7 @@ on:
 
 jobs:
   build-windows:
-    runs-on: windows-latest
+    runs-on: windows-2022  # Pinned: windows-latest no longer ships VS 2022, which the CMake generator below requires
 
     steps:
       - name: Checkout repository
