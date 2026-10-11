@@ -7,7 +7,7 @@
 #   terraform init && terraform plan && terraform apply
 
 terraform {
-  required_version = ">= 1.6.0"
+  required_version = ">= 1.7.0" # import blocks with for_each
 
   required_providers {
     github = {
